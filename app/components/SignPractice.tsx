@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import Image from 'next/image';
 import { GEMINI_MODELS } from '@/lib/schemas/cost-tracking';
 
 // ============================================================
@@ -19,6 +20,9 @@ interface SignPracticeProps {
   apiKey: string;
   expectedWord: string;
   lineColor: string;
+  lineId: string;
+  lineAbbreviation: string;
+  stationId: string;
   onTranscriptionUpdate?: (text: string) => void;
   onComplete: (finalTranscription: string, durationMs: number, frameCount: number) => void;
   onCancel: () => void;
@@ -32,6 +36,9 @@ export default function SignPractice({
   apiKey,
   expectedWord,
   lineColor,
+  lineId,
+  lineAbbreviation,
+  stationId,
   onTranscriptionUpdate,
   onComplete,
   onCancel,
@@ -288,6 +295,14 @@ If you don't see clear hand gestures, output nothing. Do not hallucinate or gues
   const showLoadingOverlay = !cameraReady && !cameraError;
   const showErrorOverlay = !!cameraError;
 
+  // Parse word into letters for sign visualization
+  const letters = useMemo(() => {
+    return expectedWord
+      .toLowerCase()
+      .split('')
+      .filter((char) => /[a-z]/.test(char)); // Only include letters a-z
+  }, [expectedWord]);
+
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-2xl mx-auto">
       {/* Target Word Display */}
@@ -406,6 +421,57 @@ If you don't see clear hand gestures, output nothing. Do not hallucinate or gues
           </div>
         )}
       </div>
+
+      {/* MRT Station Sign Banner */}
+      <div
+        className="w-full p-4 rounded-xl flex items-center gap-4 shadow-lg"
+        style={{ backgroundColor: lineColor }}
+      >
+        {/* Line Logo */}
+        <div className="flex-shrink-0">
+          <Image
+            src={`/mrt-signs/${lineId}.png`}
+            alt={`${lineAbbreviation} Line`}
+            width={60}
+            height={60}
+            className="w-12 h-12 object-contain"
+          />
+        </div>
+
+        {/* Station Info */}
+        <div className="flex-1 flex items-center gap-3">
+          <span className="text-white font-bold text-lg">{lineAbbreviation}</span>
+          <span className="text-white text-xl font-semibold">{expectedWord}</span>
+        </div>
+
+        {/* MRT Icon - placeholder for user-provided asset */}
+        <div className="flex-shrink-0 w-12 h-12 bg-white/20 rounded flex items-center justify-center">
+          <span className="text-white text-xs font-bold">MRT</span>
+        </div>
+      </div>
+
+      {/* Letter Signs Section */}
+      {letters.length > 0 && (
+        <div className="w-full">
+          <div className="text-sm text-gray-600 mb-3 text-center">Letter Signs:</div>
+          <div className="flex flex-wrap justify-center gap-4">
+            {letters.map((letter, index) => (
+              <div key={`${letter}-${index}`} className="flex flex-col items-center gap-2">
+                <div className="w-16 h-16 bg-white rounded-lg shadow-md p-2 flex items-center justify-center">
+                  <Image
+                    src={`/letters/${letter}.svg`}
+                    alt={`Sign for letter ${letter}`}
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <span className="text-gray-700 font-medium text-sm">{letter}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Live Transcription */}
       <div

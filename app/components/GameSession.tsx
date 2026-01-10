@@ -163,14 +163,14 @@ export default function GameSession({ apiKey }: GameSessionProps) {
   return (
     <div className="w-full">
       {/* Phase: Selecting */}
-      {phase === 'selecting' && (
+      {/* {phase === 'selecting' && (
         <MRTMap
           lines={lines}
           vocabulary={vocabulary}
           completedWords={completedWords}
           onSelectWord={handleSelectWord}
         />
-      )}
+      )} */}
 
       {/* Phase: Practicing */}
       {phase === 'practicing' && currentWord && currentLine && (

@@ -175,7 +175,7 @@ export const VOCABULARY: VocabularyByLine = {
       meaning: 'To represent our Esplanade Mall!',
     },
   ],
-  'thomson-east-coast-line': [
+  'tel': [
     {
       id: 'tecl-gardens-by-the-bay',
       word: 'Gardens by the Bay',
