@@ -40,7 +40,7 @@ export default function PracticePage() {
   } = useGameSession();
 
   const { progress, isLoaded: isProgressLoaded, recordAttempt } = useProgress();
-  const { goToNext, goToHome } = useStationNavigation();
+  const { goToNext, goToHome, goToStation } = useStationNavigation();
 
   // Validate route params
   const line = getMRTLineById(lineId);
@@ -136,10 +136,13 @@ export default function PracticePage() {
   }, [resetGame, goToNext, lineId, stationId]);
 
   // Handle word selection from map (shouldn't happen in practice mode, but handle gracefully)
-  const handleSelectWord = useCallback((selectedLineId: string, selectedWordId: string) => {
-    // Navigate to the selected station
-    window.location.href = `/${selectedLineId}/${selectedWordId}`;
-  }, []);
+  const handleSelectWord = useCallback(
+    (selectedLineId: string, selectedWordId: string) => {
+      // Navigate to the selected station using client-side navigation
+      goToStation(selectedLineId, selectedWordId);
+    },
+    [goToStation]
+  );
 
   // Invalid route params
   if (!line || !word) {
