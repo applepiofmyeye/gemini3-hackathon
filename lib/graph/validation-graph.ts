@@ -4,6 +4,7 @@ import { ScoringAgent } from '../agents/scoring-agent';
 import { FeedbackAgent } from '../agents/feedback-agent';
 import { type GameSessionState } from '../schemas/game-session';
 import { type LLMInferenceMetadata, GEMINI_MODELS } from '../schemas/cost-tracking';
+import { normalizePracticeWord } from '../utils/normalize';
 
 const LOG_PREFIX = '[VALIDATION_GRAPH]';
 
@@ -48,6 +49,16 @@ export class ValidationGraph {
       return state;
     }
 
+    // Normalize both expected word and transcription for consistent comparison
+    // This strips spaces/punctuation so "Tai Seng" becomes "taiseng"
+    const normalizedExpected = normalizePracticeWord(state.expectedWord);
+    const normalizedTranscription = normalizePracticeWord(state.finalTranscription);
+
+    console.log(
+      `${LOG_PREFIX} Normalized: expected="${normalizedExpected}", ` +
+        `transcription="${normalizedTranscription}" [run]`
+    );
+
     let stepCount = 0;
 
     try {
@@ -59,9 +70,9 @@ export class ValidationGraph {
       const validationResult = await this.validationAgent.run(
         this.client,
         {
-          expectedWord: state.expectedWord,
+          expectedWord: normalizedExpected,
           level: state.level,
-          transcription: state.finalTranscription,
+          transcription: normalizedTranscription,
           durationMs: state.durationMs,
         },
         'validation_0',
@@ -92,8 +103,8 @@ export class ValidationGraph {
       const scoringResult = await this.scoringAgent.run(
         this.client,
         {
-          expectedWord: state.expectedWord,
-          transcription: state.finalTranscription,
+          expectedWord: normalizedExpected,
+          transcription: normalizedTranscription,
           validationResult: validationResult.content,
           durationMs: state.durationMs,
         },
@@ -121,8 +132,8 @@ export class ValidationGraph {
       const feedbackResult = await this.feedbackAgent.run(
         this.client,
         {
-          expectedWord: state.expectedWord,
-          transcription: state.finalTranscription,
+          expectedWord: normalizedExpected,
+          transcription: normalizedTranscription,
           score: state.score ?? 0,
           validationResult: validationResult.content,
         },

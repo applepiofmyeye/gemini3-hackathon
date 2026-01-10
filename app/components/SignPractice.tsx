@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
+import { normalizePracticeWord } from '@/lib/utils/normalize';
 
 // ============================================================
 // TYPES
@@ -71,18 +72,13 @@ export default function SignPractice({
   // Timing
   const startTimeRef = useRef<number | null>(null);
 
-  // Letters from expected word (for analysis - includes spaces)
-  const letters = expectedWord.split('');
+  // Normalized letters (only a-z, lowercase) - used for BOTH display AND recognition
+  const letters = useMemo(() => {
+    return normalizePracticeWord(expectedWord).split('');
+  }, [expectedWord]);
+
   const currentLetter = letters[currentLetterIndex] || '';
   const isComplete = currentLetterIndex >= letters.length;
-
-  // Filtered letters for SVG display (only a-z)
-  const displayLetters = useMemo(() => {
-    return expectedWord
-      .toLowerCase()
-      .split('')
-      .filter((char) => /[a-z]/.test(char));
-  }, [expectedWord]);
 
   // ============================================================
   // CAMERA INITIALIZATION
@@ -154,27 +150,7 @@ export default function SignPractice({
   }, [transcription, onTranscriptionUpdate]);
 
   // ============================================================
-  // COUNTDOWN TIMER
-  // ============================================================
-
-  useEffect(() => {
-    if (countdown === null || countdown < 0) return;
-
-    if (countdown === 0) {
-      // Countdown finished - capture and recognize
-      captureAndRecognize();
-      return;
-    }
-
-    const timerId = setTimeout(() => {
-      setCountdown(countdown - 1);
-    }, 1000);
-
-    return () => clearTimeout(timerId);
-  }, [countdown]);
-
-  // ============================================================
-  // CAPTURE AND RECOGNIZE
+  // CAPTURE AND RECOGNIZE (defined before countdown effect)
   // ============================================================
 
   const captureFrame = useCallback((): string | null => {
@@ -226,7 +202,57 @@ export default function SignPractice({
     return base64;
   }, []);
 
+  // ============================================================
+  // NAVIGATION (defined before captureAndRecognize which depends on it)
+  // ============================================================
+
+  const advanceToNextLetter = useCallback(() => {
+    const nextIndex = currentLetterIndex + 1;
+
+    if (nextIndex >= letters.length) {
+      // All letters done - complete the session
+      console.log('[SignPractice] ✅ All letters completed');
+      const durationMs = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
+
+      // Immediately transition UI to complete state
+      setCurrentLetterIndex(nextIndex); // Move past final letter so isComplete becomes true
+      setCountdown(null); // Stop countdown
+      setLastResult(null); // Clear result overlay
+
+      // Call onComplete after a brief delay to show completion state
+      setTimeout(() => {
+        setTranscription((prev) => {
+          onComplete(prev, durationMs, letters.length);
+          return prev;
+        });
+      }, 500);
+    } else {
+      // Move to next letter
+      console.log('[SignPractice] ➡️ Advancing to letter:', letters[nextIndex]);
+      setCurrentLetterIndex(nextIndex);
+      setLastResult(null);
+      setCountdown(COUNTDOWN_SECONDS);
+    }
+  }, [currentLetterIndex, letters, onComplete]);
+
+  const startPractice = useCallback(() => {
+    console.log('[SignPractice] 🎬 Starting practice for word:', expectedWord);
+    setIsStarted(true);
+    setCurrentLetterIndex(0);
+    setTranscription('');
+    setTotalCost(0);
+    startTimeRef.current = Date.now();
+    setCountdown(COUNTDOWN_SECONDS);
+  }, [expectedWord]);
+
+  // captureAndRecognize defined after advanceToNextLetter
   const captureAndRecognize = useCallback(async () => {
+    // Guard: don't run if already complete or no current letter
+    if (currentLetterIndex >= letters.length || !currentLetter) {
+      console.log('[SignPractice] ⏭️ Skipping capture - already complete');
+      return;
+    }
+
     console.log('[SignPractice] 🎯 Capturing frame for letter:', currentLetter);
 
     setIsProcessing(true);
@@ -281,45 +307,27 @@ export default function SignPractice({
       advanceToNextLetter();
       setIsProcessing(false);
     }
-  }, [currentLetter, captureFrame]);
+  }, [currentLetter, currentLetterIndex, letters.length, captureFrame, advanceToNextLetter]);
 
   // ============================================================
-  // NAVIGATION
+  // COUNTDOWN TIMER (defined after captureAndRecognize)
   // ============================================================
 
-  const advanceToNextLetter = useCallback(() => {
-    const nextIndex = currentLetterIndex + 1;
+  useEffect(() => {
+    if (countdown === null || countdown < 0) return;
 
-    if (nextIndex >= letters.length) {
-      // All letters done - complete the session
-      console.log('[SignPractice] ✅ All letters completed');
-      const durationMs = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
-
-      // Use setTimeout to ensure state is updated before calling onComplete
-      setTimeout(() => {
-        setTranscription((prev) => {
-          onComplete(prev, durationMs, letters.length);
-          return prev;
-        });
-      }, 500);
-    } else {
-      // Move to next letter
-      console.log('[SignPractice] ➡️ Advancing to letter:', letters[nextIndex]);
-      setCurrentLetterIndex(nextIndex);
-      setLastResult(null);
-      setCountdown(COUNTDOWN_SECONDS);
+    if (countdown === 0) {
+      // Countdown finished - capture and recognize
+      captureAndRecognize();
+      return;
     }
-  }, [currentLetterIndex, letters, onComplete]);
 
-  const startPractice = useCallback(() => {
-    console.log('[SignPractice] 🎬 Starting practice for word:', expectedWord);
-    setIsStarted(true);
-    setCurrentLetterIndex(0);
-    setTranscription('');
-    setTotalCost(0);
-    startTimeRef.current = Date.now();
-    setCountdown(COUNTDOWN_SECONDS);
-  }, [expectedWord]);
+    const timerId = setTimeout(() => {
+      setCountdown(countdown - 1);
+    }, 1000);
+
+    return () => clearTimeout(timerId);
+  }, [countdown, captureAndRecognize]);
 
   // ============================================================
   // UI HELPERS
@@ -347,13 +355,13 @@ export default function SignPractice({
       </div>
 
       {/* Letter Signs Section */}
-      {displayLetters.length > 0 && (
+      {letters.length > 0 && (
         <div className="w-full">
           <div className="text-sm text-gray-600 mb-3 text-center">
             {isStarted ? (isComplete ? 'Complete!' : 'Sign this letter:') : 'Letter Signs:'}
           </div>
           <div className="flex flex-wrap justify-center gap-4">
-            {displayLetters.map((letter, index) => {
+            {letters.map((letter, index) => {
               const isActive = isStarted && index === currentLetterIndex;
               const isDone = isStarted && index < currentLetterIndex;
               const resultLetter = transcription[index];
