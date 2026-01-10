@@ -1,24 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SignFlow - Real-Time ASL Letter Recognition
 
-## Getting Started
+A real-time American Sign Language (ASL) letter recognition app powered by Google's Gemini 2.0 Flash Live API. The app captures webcam video, streams frames to Gemini for analysis, and displays recognized letters in real-time.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Real-time video capture from webcam
+- Continuous ASL letter recognition using Gemini Live API
+- Secure backend proxy for API key management
+- Low-latency WebSocket communication
+- Modern, responsive UI
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Prerequisites
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Node.js 18+ and npm/yarn/pnpm/bun
+- Google Gemini API key ([Get one here](https://ai.google.dev/))
+- Webcam access
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Setup
+
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+2. **Install TypeScript type definitions (optional but recommended):**
+   ```bash
+   npm install --save-dev @types/ws @types/express tsx
+   ```
+
+3. **Create `.env` file in the root directory:**
+   ```bash
+   GOOGLE_API_KEY=your_api_key_here
+   ```
+
+4. **Start the backend server:**
+   ```bash
+   npm run backend
+   # or for development with auto-reload:
+   npm run backend:dev
+   ```
+   The backend will start on `http://localhost:8080`
+
+5. **In a separate terminal, start the frontend:**
+   ```bash
+   npm run dev
+   ```
+
+6. **Open your browser:**
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+## Usage
+
+1. Click "Connect" to establish connection to the backend
+2. Click "Start Stream" to begin sending video frames
+3. Sign ASL letters with your hands in front of the camera
+4. Recognized letters will appear in real-time in the transcription area
+
+## Architecture
+
+- **Frontend**: Next.js React app (`app/components/ASLRecognizer.tsx`)
+  - Captures webcam video at 1 FPS
+  - Sends frames to backend via WebSocket
+  - Displays recognized letters in real-time
+
+- **Backend**: Node.js Express server (`app/backend/server.ts`)
+  - WebSocket server for client connections
+  - Maintains persistent Gemini Live API session
+  - Processes video frames and streams responses back
+
+## Technical Details
+
+- Video frames are downscaled to 320x240 and compressed to JPEG quality 0.6 for bandwidth efficiency
+- Frame rate: 1 FPS (as recommended by Gemini docs)
+- System instruction optimized for single-letter ASL recognition
+- Uses `sendRealtimeInput()` for continuous video streaming
 
 ## Learn More
 

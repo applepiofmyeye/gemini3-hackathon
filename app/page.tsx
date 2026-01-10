@@ -19,7 +19,7 @@ export default function Home() {
           </p>
         </header>
 
-        <ASLRecognizer apiKey={process.env.GEMINI_API_KEY || ''} />
+        <ASLRecognizer />
         
         <footer className="mt-auto py-8 text-center text-gray-600 text-sm">
           <p>Built for Gemini Hackathon</p>
