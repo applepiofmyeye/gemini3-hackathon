@@ -90,9 +90,6 @@ export default function Home() {
 
         {/* Main Game Area - Empty for now, game starts when clicking start button */}
         <div className="w-full max-w-3xl page-transition">
-          <div className="text-center mt-32">
-            <p className="text-gray-600 text-lg mb-4">Click the start button to begin your journey!</p>
-          </div>
         </div>
 
         {/* Footer */}
