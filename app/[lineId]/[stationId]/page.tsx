@@ -182,7 +182,7 @@ export default function PracticePage() {
   // Show results if validation is complete
   if (validationResult !== null && currentWord && currentLine) {
     return (
-      <div className="min-h-screen bg-[var(--hot-cream)]">
+      <div className="min-h-screen bg-(--hot-cream)">
         <div className="container mx-auto px-4 py-8 flex flex-col items-center min-h-screen relative z-10">
           <div className="w-full max-w-3xl">
             <ResultCard
@@ -204,7 +204,7 @@ export default function PracticePage() {
 
   // Show practice interface
   return (
-    <div className="min-h-screen bg-[var(--hot-cream)]">
+    <div className="min-h-screen bg-(--hot-cream)">
       <div className="container mx-auto px-4 py-8 flex flex-col min-h-screen relative z-10">
         {/* Side-by-side layout */}
         <div className="flex flex-col lg:flex-row gap-6 w-full">
