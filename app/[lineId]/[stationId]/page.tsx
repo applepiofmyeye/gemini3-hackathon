@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import Image from 'next/image';
 import { notFound, useParams } from 'next/navigation';
 import MRTMap from '@/app/components/MRTMap';
 import SignPractice from '@/app/components/SignPractice';
@@ -178,18 +177,6 @@ export default function PracticePage() {
   if (validationResult !== null && currentWord && currentLine) {
     return (
       <div className="min-h-screen bg-[var(--hot-cream)]">
-        {/* Logo */}
-        <div className="absolute top-0 left-0 z-20">
-          <Image
-            src="/hands-on-track.png"
-            alt="HANDS ON TRACK Logo"
-            width={500}
-            height={500}
-            className="h-auto w-auto max-w-[600px] md:max-w-[600px]"
-            priority
-          />
-        </div>
-
         <div className="container mx-auto px-4 py-8 flex flex-col items-center min-h-screen relative z-10">
           <div className="w-full max-w-3xl">
             <ResultCard
@@ -212,18 +199,6 @@ export default function PracticePage() {
   // Show practice interface
   return (
     <div className="min-h-screen bg-[var(--hot-cream)]">
-      {/* Logo */}
-      <div className="absolute top-0 left-0 z-20">
-        <Image
-          src="/hands-on-track.png"
-          alt="HANDS ON TRACK Logo"
-          width={500}
-          height={500}
-          className="h-auto w-auto max-w-[600px] md:max-w-[600px]"
-          priority
-        />
-      </div>
-
       <div className="container mx-auto px-4 py-8 flex flex-col min-h-screen relative z-10">
         {/* Side-by-side layout */}
         <div className="flex flex-col lg:flex-row gap-6 w-full">

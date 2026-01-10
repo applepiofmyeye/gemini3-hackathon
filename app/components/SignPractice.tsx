@@ -305,18 +305,16 @@ If you don't see clear hand gestures, output nothing. Do not hallucinate or gues
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-2xl mx-auto">
-      {/* Target Word Display */}
-      <div
-        className="w-full p-6 rounded-2xl text-center"
-        style={{ backgroundColor: `${lineColor}15` }}
-      >
-        <div className="text-sm text-gray-600 mb-2">Sign this word:</div>
-        <div
-          className="text-5xl font-bold tracking-wider"
-          style={{ color: lineColor }}
-        >
-          {expectedWord}
-        </div>
+      {/* MRT Station Sign */}
+      <div className="w-full">
+        <Image
+          src={`/mrt-signs/${stationId}.png`}
+          alt={`${lineAbbreviation} ${expectedWord} Station Sign`}
+          width={800}
+          height={200}
+          className="w-full h-auto rounded-2xl shadow-lg"
+          priority
+        />
       </div>
 
       {/* Video Container - ALWAYS rendered so ref attaches */}
@@ -420,34 +418,6 @@ If you don't see clear hand gestures, output nothing. Do not hallucinate or gues
             )}
           </div>
         )}
-      </div>
-
-      {/* MRT Station Sign Banner */}
-      <div
-        className="w-full p-4 rounded-xl flex items-center gap-4 shadow-lg"
-        style={{ backgroundColor: lineColor }}
-      >
-        {/* Line Logo */}
-        <div className="flex-shrink-0">
-          <Image
-            src={`/mrt-signs/${lineId}.png`}
-            alt={`${lineAbbreviation} Line`}
-            width={60}
-            height={60}
-            className="w-12 h-12 object-contain"
-          />
-        </div>
-
-        {/* Station Info */}
-        <div className="flex-1 flex items-center gap-3">
-          <span className="text-white font-bold text-lg">{lineAbbreviation}</span>
-          <span className="text-white text-xl font-semibold">{expectedWord}</span>
-        </div>
-
-        {/* MRT Icon - placeholder for user-provided asset */}
-        <div className="flex-shrink-0 w-12 h-12 bg-white/20 rounded flex items-center justify-center">
-          <span className="text-white text-xs font-bold">MRT</span>
-        </div>
       </div>
 
       {/* Letter Signs Section */}
