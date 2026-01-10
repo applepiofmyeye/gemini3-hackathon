@@ -56,18 +56,6 @@ export default function ResultsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--hot-cream)]">
-      {/* Logo */}
-      <div className="absolute top-0 left-0 z-20">
-        <Image
-          src="/hands-on-track.png"
-          alt="HANDS ON TRACK Logo"
-          width={500}
-          height={500}
-          className="h-auto w-auto max-w-[600px] md:max-w-[600px]"
-          priority
-        />
-      </div>
-
       <div className="container mx-auto px-4 py-8 flex flex-col items-center min-h-screen relative z-10">
         <div className="w-full max-w-4xl">
           {/* Header */}
@@ -76,6 +64,16 @@ export default function ResultsPage() {
             <h2 className="text-2xl font-semibold mb-4" style={{ color: line.color }}>
               {line.name}
             </h2>
+            <div className="flex justify-center mt-6">
+              <Image
+                src="/lawrence-wong.png"
+                alt="Lawrence Wong"
+                width={300}
+                height={300}
+                className="h-auto w-auto max-w-[300px] rounded-lg"
+                priority
+              />
+            </div>
           </div>
 
           {/* Summary Cards */}
