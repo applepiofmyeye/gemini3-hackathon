@@ -3,7 +3,7 @@ import { ValidationAgent } from '../agents/validation-agent';
 import { ScoringAgent } from '../agents/scoring-agent';
 import { FeedbackAgent } from '../agents/feedback-agent';
 import { type GameSessionState } from '../schemas/game-session';
-import { type LLMInferenceMetadata } from '../schemas/cost-tracking';
+import { type LLMInferenceMetadata, GEMINI_MODELS } from '../schemas/cost-tracking';
 
 const LOG_PREFIX = '[VALIDATION_GRAPH]';
 
@@ -22,7 +22,7 @@ export class ValidationGraph {
   private feedbackAgent: FeedbackAgent;
   private client: GeminiRestClient;
 
-  constructor(modelName: string = 'gemini-2.5-flash-preview-04-17') {
+  constructor(modelName: string = GEMINI_MODELS.GEMINI_3_FLASH) {
     this.validationAgent = new ValidationAgent();
     this.scoringAgent = new ScoringAgent();
     this.feedbackAgent = new FeedbackAgent();

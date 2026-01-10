@@ -4,20 +4,20 @@ import { getWordsByLine } from '@/lib/data/vocabulary';
 
 // Logo colors matching MRT lines
 const LOGO_COLORS = [
-  { letter: 'H', color: '#D42E12' },  // Red (North-South)
-  { letter: 'A', color: '#009645' },  // Green (East-West)
-  { letter: 'N', color: '#FA9E0D' },  // Orange (Circle)
-  { letter: 'D', color: '#9900AA' },  // Purple (North-East)
-  { letter: 'S', color: '#005EC4' },  // Blue (Downtown)
+  { letter: 'H', color: '#D42E12' }, // Red (North-South)
+  { letter: 'A', color: '#009645' }, // Green (East-West)
+  { letter: 'N', color: '#FA9E0D' }, // Orange (Circle)
+  { letter: 'D', color: '#9900AA' }, // Purple (North-East)
+  { letter: 'S', color: '#005EC4' }, // Blue (Downtown)
   { letter: ' ', color: 'transparent' },
-  { letter: 'O', color: '#D42E12' },  // Red
-  { letter: 'N', color: '#009645' },  // Green
+  { letter: 'O', color: '#D42E12' }, // Red
+  { letter: 'N', color: '#009645' }, // Green
   { letter: ' ', color: 'transparent' },
-  { letter: 'T', color: '#8B4513' },  // Brown
-  { letter: 'R', color: '#FA9E0D' },  // Orange
-  { letter: 'A', color: '#9900AA' },  // Purple
-  { letter: 'C', color: '#005EC4' },  // Blue
-  { letter: 'K', color: '#8B4513' },  // Brown
+  { letter: 'T', color: '#8B4513' }, // Brown
+  { letter: 'R', color: '#FA9E0D' }, // Orange
+  { letter: 'A', color: '#9900AA' }, // Purple
+  { letter: 'C', color: '#005EC4' }, // Blue
+  { letter: 'K', color: '#8B4513' }, // Brown
 ];
 
 export default function Home() {
@@ -97,9 +97,7 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="mt-auto py-8 text-center">
-          <p className="text-gray-500 text-sm">
-            Built for Google Gemini Hackathon 🇸🇬
-          </p>
+          <p className="text-gray-500 text-sm">Built for Google Gemini Hackathon 🇸🇬</p>
           <p className="text-gray-400 text-xs mt-1">
             Promoting sign language accessibility in Singapore
           </p>

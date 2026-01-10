@@ -40,9 +40,7 @@ export default function MRTMap({
       {/* Header */}
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Choose Your Line</h2>
-        <p className="text-gray-600">
-          Select an MRT line and pick a word to practice signing
-        </p>
+        <p className="text-gray-600">Select an MRT line and pick a word to practice signing</p>
       </div>
 
       {/* MRT Lines */}
@@ -92,12 +90,7 @@ export default function MRTMap({
                   className="text-white transition-transform duration-300"
                   style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
                 >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -161,10 +154,7 @@ export default function MRTMap({
                           )}
 
                           {/* Word */}
-                          <div
-                            className="font-bold text-lg mb-1"
-                            style={{ color: line.color }}
-                          >
+                          <div className="font-bold text-lg mb-1" style={{ color: line.color }}>
                             {word.word}
                           </div>
 

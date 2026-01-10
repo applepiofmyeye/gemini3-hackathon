@@ -103,7 +103,10 @@ export default function ResultCard({
   if (isLoading) {
     return (
       <div className="w-full max-w-lg mx-auto p-8 bg-white rounded-2xl shadow-xl text-center">
-        <div className="animate-spin w-12 h-12 border-4 border-gray-200 rounded-full mx-auto mb-4" style={{ borderTopColor: lineColor }} />
+        <div
+          className="animate-spin w-12 h-12 border-4 border-gray-200 rounded-full mx-auto mb-4"
+          style={{ borderTopColor: lineColor }}
+        />
         <p className="text-gray-600 text-lg">Analyzing your sign...</p>
         <p className="text-gray-400 text-sm mt-2">This may take a moment</p>
       </div>
@@ -158,15 +161,9 @@ export default function ResultCard({
 
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
         {/* Score Header */}
-        <div
-          className="p-6 text-center"
-          style={{ backgroundColor: `${getScoreColor()}15` }}
-        >
+        <div className="p-6 text-center" style={{ backgroundColor: `${getScoreColor()}15` }}>
           <div className="text-5xl mb-2">{getScoreEmoji()}</div>
-          <div
-            className="text-6xl font-bold mb-2"
-            style={{ color: getScoreColor() }}
-          >
+          <div className="text-6xl font-bold mb-2" style={{ color: getScoreColor() }}>
             {score !== null ? score : '--'}
           </div>
           <div className="text-xl font-medium text-gray-700">{getScoreMessage()}</div>

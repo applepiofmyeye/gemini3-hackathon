@@ -85,25 +85,43 @@ export default function GameSession({ apiKey }: GameSessionProps) {
   // Handle practice completion
   const handlePracticeComplete = useCallback(
     async (finalTranscription: string, durationMs: number, frameCount?: number) => {
+      console.log('[GameSession] 📥 handlePracticeComplete called:', {
+        finalTranscription: finalTranscription || '(empty)',
+        transcriptionLength: finalTranscription?.length ?? 0,
+        durationMs,
+        frameCount,
+      });
+
       setPhase('results');
 
       // Update session with final transcription and get updated session
       const updatedSession = endStreaming(finalTranscription, {
         frameCount: frameCount ?? 0,
-        transcriptionLength: finalTranscription.length,
+        transcriptionLength: finalTranscription?.length ?? 0,
         durationMs,
+      });
+
+      console.log('[GameSession] 📤 Session after endStreaming:', {
+        sessionId: updatedSession?.sessionId,
+        finalTranscription: updatedSession?.finalTranscription,
+        durationMs: updatedSession?.durationMs,
+        status: updatedSession?.status,
       });
 
       // Submit for validation with the updated session (avoids race condition)
       try {
         const result = await submitForValidation(updatedSession);
-        
+        console.log('[GameSession] ✅ Validation result:', {
+          success: result.success,
+          score: result.score,
+        });
+
         // Record progress if we got a score
         if (result.score !== null && currentWord) {
           recordAttempt(currentWord.id, result.score);
         }
       } catch (e) {
-        console.error('[GameSession] Validation failed:', e);
+        console.error('[GameSession] ❌ Validation failed:', e);
       }
     },
     [endStreaming, submitForValidation, recordAttempt, currentWord]
@@ -137,7 +155,10 @@ export default function GameSession({ apiKey }: GameSessionProps) {
   if (isConfigLoading || !isProgressLoaded) {
     return (
       <div className="flex flex-col items-center justify-center p-12">
-        <div className="animate-spin w-12 h-12 border-4 border-gray-200 rounded-full mb-4" style={{ borderTopColor: '#D42E12' }} />
+        <div
+          className="animate-spin w-12 h-12 border-4 border-gray-200 rounded-full mb-4"
+          style={{ borderTopColor: '#D42E12' }}
+        />
         <p className="text-gray-600">Loading game...</p>
       </div>
     );

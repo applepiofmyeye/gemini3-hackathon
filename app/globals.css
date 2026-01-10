@@ -3,13 +3,13 @@
 :root {
   /* Hands On Track Color Palette - Singapore MRT inspired */
   --hot-cream: #f8f6f0;
-  --hot-red: #D42E12;
+  --hot-red: #d42e12;
   --hot-green: #009645;
-  --hot-orange: #FA9E0D;
-  --hot-purple: #9900AA;
-  --hot-blue: #005EC4;
-  --hot-brown: #8B4513;
-  
+  --hot-orange: #fa9e0d;
+  --hot-purple: #9900aa;
+  --hot-blue: #005ec4;
+  --hot-brown: #8b4513;
+
   --background: var(--hot-cream);
   --foreground: #2d2d2d;
 }
@@ -32,7 +32,11 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 /* Confetti animation for celebrations */

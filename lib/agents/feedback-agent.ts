@@ -1,6 +1,10 @@
 import { type z } from 'zod';
 import { BaseAgent } from './base-agent';
-import { type FeedbackOutput, FeedbackOutputSchema, type ValidationOutput } from '../schemas/agent-outputs';
+import {
+  type FeedbackOutput,
+  FeedbackOutputSchema,
+  type ValidationOutput,
+} from '../schemas/agent-outputs';
 
 interface FeedbackInput {
   expectedWord: string;
