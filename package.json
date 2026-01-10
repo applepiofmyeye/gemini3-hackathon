@@ -6,13 +6,22 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "bun run lint && bun run format:check",
+    "fix": "bun run lint:fix && bun run format",
+    "test:pipeline": "npx tsx scripts/test-pipeline.ts",
+    "test:api": "npx tsx scripts/test-api.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "next": "16.1.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.17"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -21,6 +30,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "eslint-config-prettier": "^10",
+    "prettier": "^3",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

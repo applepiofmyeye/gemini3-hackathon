@@ -5,6 +5,7 @@
 Perform a comprehensive code review of the current changes. Identify issues across functionality, code quality, security, performance, and maintainability. Provide specific, actionable feedback with code examples for fixes.
 
 **Works for:**
+
 - **Local changes**: Uncommitted changes in working directory (`git diff`)
 - **Branch changes**: Current branch vs main (`git diff main...HEAD`)
 - **Specific files**: Files explicitly provided for review
@@ -45,7 +46,7 @@ Perform a comprehensive code review of the current changes. Identify issues acro
 - [ ] No code duplication (DRY principle applied appropriately)
 - [ ] Follows project conventions and style guide
 - [ ] No dead code, commented-out code, or unreachable branches
-- [ ] Complex logic has clarifying comments explaining *why*, not *what*
+- [ ] Complex logic has clarifying comments explaining _why_, not _what_
 - [ ] Magic numbers/strings are extracted to named constants
 - [ ] Nesting depth is reasonable (max 3-4 levels)
 
@@ -125,18 +126,21 @@ Perform a comprehensive code review of the current changes. Identify issues acro
 ## Red Flags to Watch For
 
 **Immediate Concerns (must fix)**:
+
 - Security vulnerabilities
 - Data loss risks
 - Breaking changes without migration
 - Missing error handling on critical paths
 
 **Strong Suggestions**:
+
 - Significant performance issues
 - Missing tests for complex logic
 - Code that will be hard to maintain
 - Violations of established patterns
 
 **Nitpicks (optional)**:
+
 - Style preferences
 - Minor naming improvements
 - Additional documentation suggestions
@@ -163,6 +167,7 @@ Provide feedback in this structure:
 ```
 
 For each issue, include:
+
 1. **Location**: File and line reference
 2. **Issue**: What's wrong and why it matters
 3. **Fix**: Specific code example or approach to resolve

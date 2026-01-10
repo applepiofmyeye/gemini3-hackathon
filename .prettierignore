@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Lock files
+bun.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Generated types
+next-env.d.ts
+.next/types/**/*.ts

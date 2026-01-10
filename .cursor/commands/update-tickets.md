@@ -28,6 +28,7 @@ This command helps you manage tickets in `tickets.md`. You can add new tickets, 
 ## Status Transition Rules
 
 Valid status transitions:
+
 - `TODO` → `IN_PROGRESS`, `WIP`, `BLOCKED`, `CANCELLED`
 - `IN_PROGRESS` → `TODO`, `BLOCKED`, `REVIEW`, `COMPLETED`, `CANCELLED`
 - `WIP` → `TODO`, `BLOCKED`, `REVIEW`, `COMPLETED`, `CANCELLED`
@@ -48,6 +49,7 @@ Valid status transitions:
 ### 1. Add New Ticket
 
 When adding a new ticket:
+
 1. Ask the user for:
    - Task Type (validate against valid types)
    - Task title (required, brief summary)
@@ -60,6 +62,7 @@ When adding a new ticket:
 ### 2. Update Ticket Status
 
 When updating a ticket status:
+
 1. Ask the user which ticket to update (by task title or show a numbered list)
 2. Show the current status
 3. Ask for the new status (validate against valid statuses)
@@ -70,6 +73,7 @@ When updating a ticket status:
 ### 3. Update Ticket Description
 
 When updating a ticket description:
+
 1. Ask the user which ticket to update (by task title or show a numbered list)
 2. Show the current description
 3. Ask for the new description
@@ -78,6 +82,7 @@ When updating a ticket description:
 ### 4. Move Ticket to Backlog
 
 When moving a ticket to backlog:
+
 1. Ask the user which ticket to move (by task title or show a numbered list)
 2. Remove the ticket from the main table
 3. Add it as a bullet point in the "Backlog (Future Ideas)" section
@@ -86,6 +91,7 @@ When moving a ticket to backlog:
 ### 5. Move Ticket from Backlog to Main Table
 
 When moving a ticket from backlog:
+
 1. Show the backlog items
 2. Ask the user which backlog item to promote
 3. Parse the backlog item to extract Task Type, Task, and Description
@@ -105,6 +111,7 @@ When moving a ticket from backlog:
 ## Validation
 
 Always validate:
+
 - Task Type is one of the valid types (case-sensitive)
 - Status is one of the valid statuses (case-sensitive)
 - Task title is provided and not empty
@@ -115,6 +122,7 @@ Always validate:
 ## Error Handling
 
 If validation fails:
+
 - Clearly explain what went wrong
 - Show the valid options
 - Ask the user to try again with corrected input
@@ -122,17 +130,19 @@ If validation fails:
 ## Examples
 
 ### Adding a ticket:
+
 User: "Add a new FEATURE ticket: 'Add dark mode toggle' with description 'Implement a dark mode toggle in the header'"
 
 Response: Add the ticket to the table with status TODO.
 
 ### Updating status:
+
 User: "Update the status of 'Implement RAG knowledge base' to IN_PROGRESS"
 
 Response: Find the ticket, validate the transition from TODO to IN_PROGRESS is valid, update it.
 
 ### Moving to backlog:
+
 User: "Move 'Add RSS feed for blog section' to backlog"
 
 Response: Remove from main table, add to backlog section.
-
