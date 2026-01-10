@@ -53,6 +53,14 @@ export const MRT_LINES: MRTLine[] = [
     description: 'From Bukit Panjang to Expo',
     stations: ['Bukit Panjang', 'Little India', 'Bayfront', 'Expo'],
   },
+  {
+    id: 'thomson-east-coast-line',
+    name: 'Thomson-East Coast Line',
+    color: '#8B4513',
+    bgGradient: 'from-brown-600 to-brown-500',
+    description: 'From Tuas Link to Bright Hill',
+    stations: ['Tuas Link', 'Bright Hill'],
+  }
 ];
 
 /**

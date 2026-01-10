@@ -76,7 +76,7 @@ export default function Home() {
                 style={{ backgroundColor: '#005EC4' }}
               />
             </span>
-            <span className="text-sm text-gray-600">5 Lines • 18 Words</span>
+            <span className="text-sm text-gray-600">5 Lines • 30 Words</span>
           </div>
         </header>
 
