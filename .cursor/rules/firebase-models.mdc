@@ -1,0 +1,310 @@
+---
+description: Guidelines for creating and structuring Firebase data models in the codebase, for upload to firebase database
+alwaysApply: false
+---
+# Firebase Data Models
+
+This guide outlines patterns and best practices for creating subclasses of `FirebaseBaseModel`.
+
+## Class Structure
+
+- **Inheritance and Core Fields:**
+  ```python
+  class YourModel(FirebaseBaseModel):
+      created_at: datetime = Field(default_factory=get_singapore_datetime_now)
+      # doc_id is automatically provided by FirebaseBaseModel
+  ```
+
+- **Collection Naming:**
+  ```python
+  @classmethod
+  def firebase_collection_name(cls, **kwargs) -> str:
+      return "your_collection_name"
+  ```
+
+- **Pydantic Model Config:**
+  ```python
+  # If your model contains Enum fields, use this config to store enum values rather than names
+  model_config = ConfigDict(
+      use_enum_values=True
+  )
+  ```
+
+## Factory Methods
+
+- **Use `new()` for Object Creation:**
+  ```python
+  @classmethod
+  def new(cls, param1: str, param2: int) -> Self:
+      # Generate a document ID
+      doc_id = generate_nanoid()
+      
+      # Creation timestamp is handled by the default_factory
+      
+      return cls(
+          doc_id=doc_id,
+          param1=param1,
+          param2=param2,
+      )
+  ```
+
+- **Factory Method for Converting from State Object:**
+  ```python
+  @classmethod
+  def from_state(cls, state: SomeState, additional_param1: str, additional_param2: int) -> Self:
+      """Convert a state object into a FirebaseBaseModel. This is only applicable for LLM pipelines where we need to save the state to db"""
+      return cls(
+          # Add any required fields not in the state
+          additional_param1=additional_param1,
+          additional_param2=additional_param2,
+          # Unpack all fields from the state
+          **state.model_dump()
+      )
+  ```
+
+## Query Methods
+
+- **Fetch Latest Single Document:**
+  ```python
+  @classmethod
+  def fetch_latest(cls, param1: str, param2: str) -> Optional[Self]:
+      """
+      Fetch the latest document matching the specified criteria.
+      """
+      query_conditions: List[FirestoreQuery] = [
+          FirestoreWhereQuery(field="param1", operator="==", value=param1),
+          FirestoreWhereQuery(field="param2", operator="==", value=param2),
+          FirestoreOrderByQuery(
+              field="created_at", direction=FirestoreOrderByDirection.DESCENDING),
+          FirestoreLimitQuery(limit=1)
+      ]
+      
+      fetch_result = cls.fetch_one_result_with_query(query_conditions)
+      if not fetch_result.success or fetch_result.result is None:
+          if fetch_result.doc_not_found:
+              return None
+          else:
+              raise Exception(
+                  f"Error fetching {cls.__name__} for param1={param1}, param2={param2}"
+              )
+      
+      return fetch_result.result
+  ```
+
+- **Fetch by Criteria with Multiple Parameters:**
+  ```python
+  @classmethod
+  def fetch_by_criteria(cls, param1: str, param2: str | Enum, 
+                        status: Optional[str] = None) -> Optional[Self]:
+      """
+      Fetch a document with multiple criteria, with some optional parameters.
+      """
+      query_conditions: List[FirestoreQuery] = [
+          FirestoreWhereQuery(field="param1", operator="==", value=param1),
+          FirestoreWhereQuery(field="param2", operator="==", 
+                              value=param2.value if isinstance(param2, Enum) else param2)
+      ]
+      
+      # Add optional parameters if provided
+      if status is not None:
+          query_conditions.append(
+              FirestoreWhereQuery(field="status", operator="==", value=status)
+          )
+          
+      fetch_result = cls.fetch_one_result_with_query(query_conditions)
+      if not fetch_result.success or fetch_result.result is None:
+          return None
+      
+      return fetch_result.result
+  ```
+
+- **Fetch Multiple Documents:**
+  ```python
+  @classmethod
+  def fetch_all_by_criteria(cls, param1: str | Enum, param2: Optional[str] = None) -> List[Self]:
+      """
+      Fetch all documents matching the specified criteria.
+      """
+      # Convert Enum to string value if necessary
+      param1_value = param1.value if isinstance(param1, Enum) else param1
+      
+      query_conditions: List[FirestoreQuery] = [
+          FirestoreWhereQuery(field="param1", operator="==", value=param1_value)
+      ]
+      
+      # Add optional parameters if provided
+      if param2 is not None:
+          query_conditions.append(
+              FirestoreWhereQuery(field="param2", operator="==", value=param2)
+          )
+      
+      fetch_result = cls.fetch_multiple_results(query_conditions)
+      if not fetch_result.success:
+          if fetch_result.doc_not_found:
+              return []
+          else:
+              raise Exception(f"Error fetching {cls.__name__} with param1={param1_value}: {fetch_result.fetch_status}")
+      
+      return fetch_result.result or []
+  ```
+
+
+- **Handle Fetch Results Properly:**
+  ```python
+  fetch_result = cls.fetch_one_result_with_query(query_conditions)
+  
+  # For single document queries:
+  if not fetch_result.success or fetch_result.result is None:
+      if fetch_result.doc_not_found:
+          return None  # Document simply doesn't exist
+      else:
+          # This indicates a more serious error (multiple results or other error)
+          raise Exception(f"Error fetching {cls.__name__}: {fetch_result.fetch_status}")
+  
+  # For multiple document queries:
+  if not fetch_result.success:
+      if fetch_result.doc_not_found:
+          return []  # No documents found is an expected case
+      else:
+          # Log and/or raise for other types of errors
+          logger.error(f"Error fetching {cls.__name__}: {fetch_result.fetch_status}")
+          raise Exception(f"Error fetching {cls.__name__}: {fetch_result.fetch_status}")
+  
+  return fetch_result.result or []  # Handle potential None result safely
+  ```
+
+## Update Methods
+
+- **Atomic Field Updates:**
+  ```python
+  def update_field(self, new_value: str | Enum | BaseModel | Any) -> bool:
+      """Update a single field with error handling"""
+      try:
+          doc_ref = self.get_one_doc_ref(doc_id=self.doc_id)
+          
+          # Convert value if necessary
+          if isinstance(new_value, Enum):
+              new_value = new_value.value
+          elif isinstance(new_value, BaseModel):
+              new_value = new_value.model_dump()
+              
+          # Update in Firestore  
+          doc_ref.update({"field_name": new_value})
+          
+          # Update local instance
+          self.field_name = new_value
+          return True
+      except Exception as e:
+          logger.error(f"Error updating field for {self.doc_id}: {e}")
+          return False
+  ```
+
+- **Multi-Field Updates:**
+  ```python
+  def update_multiple_fields(self, param_1, param_2) -> bool:
+      """Update multiple fields atomically"""
+      try:
+          doc_ref = self.get_one_doc_ref(doc_id=self.doc_id)
+          doc_ref.update({
+            "param1": param1,
+            "param2": param2
+          })
+          
+          # Update local instance
+          self.param_1 = param_1
+          self.param_2 = param_2
+          return True
+      except Exception as e:
+          logger.error(f"Error updating multiple fields for {self.doc_id}: {e}")
+          return False
+  ```
+
+- **Add Items to List Fields:**
+  ```python
+  # use array union or array remove for list fields
+  ```
+
+## State Tracking Models
+
+- **For Graph Execution States:**
+  ```python
+  class ExampleStateForDB(ExampleState, FirebaseBaseModel):
+      """Firebase model for storing the execution state of a process."""
+      created_at: datetime = Field(default_factory=get_singapore_datetime_now)
+      
+      # Input parameters that define the context of this state
+      context_param1: str
+      context_param2: str
+      
+      @classmethod
+      def from_state(cls, state: ExampleState, context_param1: str, context_param2: str) -> Self:
+          """Factory method to create a new instance from a state object."""
+          return cls(
+              context_param1=context_param1,
+              context_param2=context_param2,
+              **state.model_dump()
+          )
+      
+      @classmethod
+      def firebase_collection_name(cls) -> str:
+          # Consider prefixing collection names for state objects. zz will cause the collection to be at the bottom
+          return "zz_example_states"
+  ```
+
+## Delete Operations
+
+- **Single Document Deletion:**
+  ```python
+  def delete(self) -> bool:
+      """Delete this document with error handling"""
+      try:
+          doc_ref = self.get_one_doc_ref(doc_id=self.doc_id)
+          doc_ref.delete()
+          return True
+      except Exception as e:
+          logger.error(f"Error deleting document {self.doc_id}: {e}")
+          return False
+  ```
+
+- **Batch Deletion:**
+  ```python
+  @classmethod
+  def delete_all_by_criteria(cls, param1: str, param2: Optional[str] = None) -> bool:
+      """Delete all documents matching criteria"""
+      query_conditions: List[FirestoreQuery] = [
+          FirestoreWhereQuery(field="param1", operator="==", value=param1)
+      ]
+      
+      if param2 is not None:
+          query_conditions.append(
+              FirestoreWhereQuery(field="param2", operator="==", value=param2)
+          )
+          
+      result = cls.fetch_and_delete_all_documents(query_conditions)
+      
+      # Report failed deletions
+      if not all(result.values()):
+          failed_ids = [doc_id for doc_id, success in result.items() if not success]
+          logger.error(f"Failed to delete documents: {failed_ids}")
+          
+      return all(result.values())
+  ```
+
+## Best Practices
+
+- Always provide a default implementation of `firebase_collection_name()`
+- Use `new()` and other factory methods instead of direct construction
+- Use `from_state()` when creating models from llm pipeline states
+- Generate deterministic document IDs with `get_doc_id()` for natural keys
+- Implement proper error handling in all database operations
+- Return empty collections (`[]`) for list results rather than `None`
+- Use `Optional[T]` with `None` returns for single-document queries
+- Update both Firestore and local instance when modifying fields
+- Follow naming conventions:
+  - Use `zz_` prefix for temporary state collections
+  - Use snake_case for collection names
+- Add hash values for data deduplication when appropriate
+- Include performance metrics in models when relevant
+- Always check `fetch_result.success` and handle errors with specificity
+- Provide detailed error messages that include relevant identifiers
+- When fetching with multiple criteria, make parameters optional when sensible
