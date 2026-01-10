@@ -1,4 +1,6 @@
-import GameSession from './components/GameSession';
+import Image from 'next/image';
+import Link from 'next/link';
+import { getWordsByLine } from '@/lib/data/vocabulary';
 
 // Logo colors matching MRT lines
 const LOGO_COLORS = [
@@ -19,70 +21,78 @@ const LOGO_COLORS = [
 ];
 
 export default function Home() {
-  const apiKey = process.env.GEMINI_API_KEY || '';
+  // Get first station for north-south line
+  const northSouthStations = getWordsByLine('north-south');
+  const firstStation = northSouthStations[0];
+  const firstStationPath = firstStation ? `/north-south/${firstStation.id}` : '/';
 
   return (
-    <main className="min-h-screen bg-[var(--hot-cream)]">
-      <div className="container mx-auto px-4 py-8 flex flex-col items-center min-h-screen">
+    <main className="min-h-screen bg-[var(--hot-cream)] relative">
+      {/* Logo - Top Left */}
+      <div className="absolute top-0 left-0 z-20">
+        <Image
+          src="/hands-on-track.png"
+          alt="HANDS ON TRACK Logo"
+          width={500}
+          height={500}
+          className="h-auto w-auto max-w-[600px] md:max-w-[600px]"
+          priority
+        />
+      </div>
+
+      {/* Start Button with Animated Train - Top Right */}
+      <div className="absolute top-24 right-20 z-20">
+        <Link href={firstStationPath} className="block">
+          <button 
+            className="relative cursor-pointer hover:scale-105 transition-transform max-w-md"
+          >
+            {/* Train - animated on top, clipped to button width and showing only bottom half */}
+            <div className="absolute -top-9 left-0 right-0 z-10 h-[54px] overflow-hidden pointer-events-none">
+              <div className="w-full h-full">
+                <Image
+                  src="/animations/train.png"
+                  alt="MRT Train"
+                  width={400}
+                  height={60}
+                  className="w-[400px] h-auto animate-train"
+                />
+              </div>
+            </div>
+            
+            {/* Start Button */}
+            <Image
+              src="/mrt-signs/start-button.png"
+              alt="Press to START!"
+              width={400}
+              height={80}
+              className="w-full h-auto relative z-0"
+            />
+          </button>
+        </Link>
+      </div>
+
+      {/* Singapore Skyline Background */}
+      <div className="absolute bottom-0 left-0 right-0 z-0">
+        <Image
+          src="/singapore-skyline.png"
+          alt="Singapore Skyline"
+          width={1507}
+          height={560}
+          sizes="100vw"
+          className="w-[100%] h-auto"
+        />
+      </div>
+      
+      <div className="container mx-auto px-4 py-8 flex flex-col items-center min-h-screen relative z-10">
         {/* Header */}
         <header className="mb-8 text-center pt-4">
-          {/* Logo */}
-          <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4">
-            {LOGO_COLORS.map((item, i) =>
-              item.letter === ' ' ? (
-                <span key={i} className="inline-block w-3 md:w-5" />
-              ) : (
-                <span
-                  key={i}
-                  className="logo-letter"
-                  style={{ color: item.color }}
-                >
-                  {item.letter}
-                </span>
-              )
-            )}
-          </h1>
-
-          {/* Tagline */}
-          <p className="text-lg text-gray-600 max-w-lg mx-auto leading-relaxed">
-            Learn sign language by riding the MRT! 🚇
-            <br />
-            <span className="text-sm text-gray-500">
-              Powered by Gemini 2.0 Flash Live API
-            </span>
-          </p>
-
-          {/* Quick Stats Badge */}
-          <div className="mt-4 inline-flex items-center gap-3 px-4 py-2 bg-white/80 rounded-full shadow-sm">
-            <span className="flex items-center gap-1.5">
-              <span
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: '#D42E12' }}
-              />
-              <span
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: '#009645' }}
-              />
-              <span
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: '#FA9E0D' }}
-              />
-              <span
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: '#9900AA' }}
-              />
-              <span
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: '#005EC4' }}
-              />
-            </span>
-            <span className="text-sm text-gray-600">5 Lines • 30 Words</span>
-          </div>
         </header>
 
-        {/* Main Game Area */}
+        {/* Main Game Area - Empty for now, game starts when clicking start button */}
         <div className="w-full max-w-3xl page-transition">
-          <GameSession apiKey={apiKey} />
+          <div className="text-center mt-32">
+            <p className="text-gray-600 text-lg mb-4">Click the start button to begin your journey!</p>
+          </div>
         </div>
 
         {/* Footer */}

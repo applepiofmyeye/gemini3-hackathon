@@ -22,29 +22,29 @@ export const VOCABULARY: VocabularyByLine = {
       meaning: 'Bishan',
     },
     {
-      id: 'ns-Yishun',
+      id: 'ns-yishun',
       word: 'Yishun',
       level: 1,
       meaning: 'Yishun',
       culturalNote: "Singapore's train system",
     },
     {
-      id: 'ns-Kranji',
+      id: 'ns-kranji',
       word: 'Kranji',
       level: 1,
       meaning: 'Kranji',
     },
     {
-      id: 'ns-Merlion',
-      word: 'Merlion',
+      id: 'ns-raffles-place',
+      word: 'Raffles Place',
       level: 1,
       meaning: 'Raffles Place',
     },
     {
-      id: 'ns-Jurong-East',
-      word: 'Jurong East',
+      id: 'ns-novena',
+      word: 'Novena',
       level: 1,
-      meaning: 'Jurong East',
+      meaning: 'Novena',
     }
   ],
   'east-west': [
@@ -175,12 +175,12 @@ export const VOCABULARY: VocabularyByLine = {
       meaning: 'To represent our Esplanade Mall!',
     },
   ],
-  'thomson-east-coast-line': [
+  'tel': [
     {
-      id: 'tecl-gardens-by-the-bay',
-      word: 'Gardens by the Bay',
+      id: 'tecl-siglap',
+      word: 'Siglap',
       level: 1,
-      meaning: 'Gardens by the Bay',
+      meaning: 'Siglap',
     },
     {
       id: 'tecl-lentor',

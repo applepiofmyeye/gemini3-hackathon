@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import Image from 'next/image';
 import { GEMINI_MODELS } from '@/lib/schemas/cost-tracking';
 
 // ============================================================
@@ -19,6 +20,9 @@ interface SignPracticeProps {
   apiKey: string;
   expectedWord: string;
   lineColor: string;
+  lineId: string;
+  lineAbbreviation: string;
+  stationId: string;
   onTranscriptionUpdate?: (text: string) => void;
   onComplete: (finalTranscription: string, durationMs: number, frameCount: number) => void;
   onCancel: () => void;
@@ -32,6 +36,9 @@ export default function SignPractice({
   apiKey,
   expectedWord,
   lineColor,
+  lineId,
+  lineAbbreviation,
+  stationId,
   onTranscriptionUpdate,
   onComplete,
   onCancel,
@@ -288,20 +295,26 @@ If you don't see clear hand gestures, output nothing. Do not hallucinate or gues
   const showLoadingOverlay = !cameraReady && !cameraError;
   const showErrorOverlay = !!cameraError;
 
+  // Parse word into letters for sign visualization
+  const letters = useMemo(() => {
+    return expectedWord
+      .toLowerCase()
+      .split('')
+      .filter((char) => /[a-z]/.test(char)); // Only include letters a-z
+  }, [expectedWord]);
+
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-2xl mx-auto">
-      {/* Target Word Display */}
-      <div
-        className="w-full p-6 rounded-2xl text-center"
-        style={{ backgroundColor: `${lineColor}15` }}
-      >
-        <div className="text-sm text-gray-600 mb-2">Sign this word:</div>
-        <div
-          className="text-5xl font-bold tracking-wider"
-          style={{ color: lineColor }}
-        >
-          {expectedWord}
-        </div>
+      {/* MRT Station Sign */}
+      <div className="w-full">
+        <Image
+          src={`/mrt-signs/${stationId}.png`}
+          alt={`${lineAbbreviation} ${expectedWord} Station Sign`}
+          width={800}
+          height={200}
+          className="w-full h-auto rounded-2xl shadow-lg"
+          priority
+        />
       </div>
 
       {/* Video Container - ALWAYS rendered so ref attaches */}
@@ -406,6 +419,29 @@ If you don't see clear hand gestures, output nothing. Do not hallucinate or gues
           </div>
         )}
       </div>
+
+      {/* Letter Signs Section */}
+      {letters.length > 0 && (
+        <div className="w-full">
+          <div className="text-sm text-gray-600 mb-3 text-center">Letter Signs:</div>
+          <div className="flex flex-wrap justify-center gap-4">
+            {letters.map((letter, index) => (
+              <div key={`${letter}-${index}`} className="flex flex-col items-center gap-2">
+                <div className="w-16 h-16 bg-white rounded-lg shadow-md p-2 flex items-center justify-center">
+                  <Image
+                    src={`/letters/${letter}.svg`}
+                    alt={`Sign for letter ${letter}`}
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <span className="text-gray-700 font-medium text-sm">{letter}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Live Transcription */}
       <div
