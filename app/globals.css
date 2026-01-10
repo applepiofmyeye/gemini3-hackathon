@@ -116,3 +116,8 @@ body {
 .animate-train {
   animation: train-move 4s linear infinite;
 }
+
+/* Fade in animation for loading text transitions */
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
