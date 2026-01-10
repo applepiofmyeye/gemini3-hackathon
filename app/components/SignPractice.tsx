@@ -328,39 +328,6 @@ export default function SignPractice({
   const showLoadingOverlay = !cameraReady && !cameraError;
   const showErrorOverlay = !!cameraError;
 
-  // Get display for letter progress
-  const getLetterDisplay = () => {
-    return letters.map((letter, idx) => {
-      const isActive = idx === currentLetterIndex;
-      const isDone = idx < currentLetterIndex;
-      const resultLetter = transcription[idx];
-      const isCorrect = resultLetter?.toLowerCase() === letter.toLowerCase();
-
-      return (
-        <span
-          key={idx}
-          className={`w-12 h-12 mx-1 rounded-lg flex items-center justify-center text-2xl font-bold transition-all ${
-            isActive
-              ? 'ring-4 ring-offset-2 scale-110'
-              : isDone
-                ? isCorrect
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-red-100 text-red-700'
-                : 'bg-gray-100 text-gray-400'
-          }`}
-          style={{
-            backgroundColor: isActive ? `${lineColor}20` : undefined,
-            color: isActive ? lineColor : undefined,
-            // @ts-expect-error ringColor is a Tailwind CSS variable
-            '--tw-ring-color': isActive ? lineColor : undefined,
-          }}
-        >
-          {isDone ? resultLetter : letter}
-        </span>
-      );
-    });
-  };
-
   // ============================================================
   // RENDER
   // ============================================================
@@ -379,16 +346,63 @@ export default function SignPractice({
         />
       </div>
 
-      {/* Letter Progress Display */}
-      {isStarted && (
-        <div
-          className="w-full p-6 rounded-2xl text-center"
-          style={{ backgroundColor: `${lineColor}15` }}
-        >
-          <div className="text-sm text-gray-600 mb-4">
-            {isComplete ? 'Complete!' : `Sign this letter:`}
+      {/* Letter Signs Section */}
+      {displayLetters.length > 0 && (
+        <div className="w-full">
+          <div className="text-sm text-gray-600 mb-3 text-center">
+            {isStarted ? (isComplete ? 'Complete!' : 'Sign this letter:') : 'Letter Signs:'}
           </div>
-          <div className="flex justify-center items-center flex-wrap">{getLetterDisplay()}</div>
+          <div className="flex flex-wrap justify-center gap-4">
+            {displayLetters.map((letter, index) => {
+              const isActive = isStarted && index === currentLetterIndex;
+              const isDone = isStarted && index < currentLetterIndex;
+              const resultLetter = transcription[index];
+              const isCorrect = resultLetter?.toLowerCase() === letter.toLowerCase();
+
+              return (
+                <div key={`${letter}-${index}`} className="flex flex-col items-center gap-2">
+                  <div
+                    className={`w-16 h-16 rounded-lg shadow-md p-2 flex items-center justify-center transition-all ${
+                      isActive
+                        ? 'ring-4 ring-offset-2 scale-110'
+                        : isDone
+                          ? isCorrect
+                            ? 'bg-green-100'
+                            : 'bg-red-100'
+                          : 'bg-white'
+                    }`}
+                    style={{
+                      backgroundColor: isActive ? `${lineColor}20` : undefined,
+                      // @ts-expect-error ringColor is a Tailwind CSS variable
+                      '--tw-ring-color': isActive ? lineColor : undefined,
+                    }}
+                  >
+                    <Image
+                      src={`/letters/${letter}.svg`}
+                      alt={`Sign for letter ${letter}`}
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <span
+                    className={`font-medium text-sm transition-all ${
+                      isActive
+                        ? 'font-bold text-lg'
+                        : isDone
+                          ? isCorrect
+                            ? 'text-green-700'
+                            : 'text-red-700'
+                          : 'text-gray-700'
+                    }`}
+                    style={{ color: isActive ? lineColor : undefined }}
+                  >
+                    {isDone ? resultLetter : letter}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -482,29 +496,6 @@ export default function SignPractice({
           </div>
         )}
       </div>
-
-      {/* Letter Signs Section */}
-      {displayLetters.length > 0 && (
-        <div className="w-full">
-          <div className="text-sm text-gray-600 mb-3 text-center">Letter Signs:</div>
-          <div className="flex flex-wrap justify-center gap-4">
-            {displayLetters.map((letter, index) => (
-              <div key={`${letter}-${index}`} className="flex flex-col items-center gap-2">
-                <div className="w-16 h-16 bg-white rounded-lg shadow-md p-2 flex items-center justify-center">
-                  <Image
-                    src={`/letters/${letter}.svg`}
-                    alt={`Sign for letter ${letter}`}
-                    width={48}
-                    height={48}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <span className="text-gray-700 font-medium text-sm">{letter}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Live Transcription */}
       <div className="w-full p-6 rounded-2xl min-h-[80px]" style={{ backgroundColor: '#f8f6f0' }}>
