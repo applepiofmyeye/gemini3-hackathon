@@ -118,7 +118,8 @@ export default function MRTMap({
                           style={{
                             borderColor: isCurrent ? line.color : isCompleted ? line.color : '#e5e7eb',
                             backgroundColor: isCurrent ? `${line.color}20` : isCompleted ? `${line.color}10` : 'white',
-                            ringColor: isCurrent ? line.color : undefined,
+                            // @ts-expect-error Tailwind CSS variable for ring color
+                            '--tw-ring-color': isCurrent ? line.color : undefined,
                           }}
                         >
                           {/* Current Station Indicator */}
