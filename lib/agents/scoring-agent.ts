@@ -1,6 +1,10 @@
 import { type z } from 'zod';
 import { BaseAgent } from './base-agent';
-import { type ScoringOutput, ScoringOutputSchema, type ValidationOutput } from '../schemas/agent-outputs';
+import {
+  type ScoringOutput,
+  ScoringOutputSchema,
+  type ValidationOutput,
+} from '../schemas/agent-outputs';
 
 interface ScoringInput {
   expectedWord: string;

@@ -1,7 +1,11 @@
 'use client';
 
 import { type TranscriptionEvent } from '../schemas/game-session';
-import { type StreamingCostMetadata, GEMINI_MODELS, getModelPricing } from '../schemas/cost-tracking';
+import {
+  type StreamingCostMetadata,
+  GEMINI_MODELS,
+  getModelPricing,
+} from '../schemas/cost-tracking';
 
 /**
  * Configuration for Live Stream Agent.
@@ -42,8 +46,8 @@ const LIVE_API_URL =
 // Estimated tokens per frame (rough estimate for image tokens)
 const ESTIMATED_TOKENS_PER_FRAME = 258;
 
-// Default model for Live API (must use native audio dialog model for streaming)
-const DEFAULT_LIVE_MODEL = GEMINI_MODELS.GEMINI_2_5_FLASH_NATIVE;
+// Default model for Live API (must use 2.0 flash for VIDEO streaming)
+const DEFAULT_LIVE_MODEL = GEMINI_MODELS.GEMINI_2_0_FLASH_LIVE;
 
 /**
  * LiveStreamAgent - Client-side wrapper for Gemini Live API.
@@ -213,8 +217,7 @@ export class LiveStreamAgent {
       sessionDurationMs: durationMs,
       estimatedInputTokens,
       estimatedOutputTokens,
-      estimatedCost:
-        estimatedInputTokens * pricing.input + estimatedOutputTokens * pricing.output,
+      estimatedCost: estimatedInputTokens * pricing.input + estimatedOutputTokens * pricing.output,
       frameCount: this.frameCount,
       transcriptionCount: this.transcriptionEvents.length,
     };

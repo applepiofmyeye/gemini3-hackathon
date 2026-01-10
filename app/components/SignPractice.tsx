@@ -1,35 +1,44 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { GEMINI_MODELS } from '@/lib/schemas/cost-tracking';
 
 // ============================================================
 // TYPES
 // ============================================================
-
-type LiveIncomingMessage = {
-  serverContent?: {
-    modelTurn?: {
-      parts?: { text?: string }[];
-    };
-  };
-};
 
 interface SignPracticeProps {
   apiKey: string;
   expectedWord: string;
   lineColor: string;
   onTranscriptionUpdate?: (text: string) => void;
-  onComplete: (finalTranscription: string, durationMs: number, frameCount: number) => void;
+  onComplete: (finalTranscription: string, durationMs: number, letterCount: number) => void;
   onCancel: () => void;
 }
+
+interface RecognizeResponse {
+  success: boolean;
+  letter: string;
+  metrics?: {
+    cost: number;
+    inputTokens: number;
+    outputTokens: number;
+    latencyMs: number;
+    model: string;
+  };
+  error?: string;
+}
+
+// ============================================================
+// COUNTDOWN DURATION
+// ============================================================
+
+const COUNTDOWN_SECONDS = 3;
 
 // ============================================================
 // COMPONENT
 // ============================================================
 
 export default function SignPractice({
-  apiKey,
   expectedWord,
   lineColor,
   onTranscriptionUpdate,
@@ -38,23 +47,37 @@ export default function SignPractice({
 }: SignPracticeProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [socket, setSocket] = useState<WebSocket | null>(null);
-  const [transcription, setTranscription] = useState<string>('');
-  const [isConnected, setIsConnected] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamStartTime, setStreamStartTime] = useState<number | null>(null);
-  const [elapsedTime, setElapsedTime] = useState(0);
+
+  // Camera state
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
-  const frameCountRef = useRef(0);
 
-  // Initialize camera - now the video element is always in the DOM
+  // Game state
+  const [isStarted, setIsStarted] = useState(false);
+  const [currentLetterIndex, setCurrentLetterIndex] = useState(0);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [transcription, setTranscription] = useState('');
+  const [lastResult, setLastResult] = useState<string | null>(null);
+  const [totalCost, setTotalCost] = useState(0);
+
+  // Timing
+  const startTimeRef = useRef<number | null>(null);
+
+  // Letters from expected word
+  const letters = expectedWord.split('');
+  const currentLetter = letters[currentLetterIndex] || '';
+  const isComplete = currentLetterIndex >= letters.length;
+
+  // ============================================================
+  // CAMERA INITIALIZATION
+  // ============================================================
+
   const startCamera = useCallback(async () => {
     setCameraError(null);
     setCameraReady(false);
-    
+
     try {
-      // Check if mediaDevices is available (requires HTTPS or localhost)
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera API not available. Please use HTTPS or localhost.');
       }
@@ -66,40 +89,24 @@ export default function SignPractice({
           facingMode: 'user',
         },
       });
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setCameraReady(true);
       } else {
-        // This shouldn't happen now that video is always rendered
         console.error('[SignPractice] videoRef is null after getting stream');
         setCameraError('Failed to attach camera stream. Please refresh and try again.');
       }
     } catch (error) {
-      console.error('Error accessing camera:', error);
-      
-      // Provide specific error messages
+      console.error('[SignPractice] Error accessing camera:', error);
+
       if (error instanceof Error) {
         if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-          setCameraError('Camera permission denied. Please allow camera access in your browser settings and refresh the page.');
+          setCameraError('Camera permission denied. Please allow camera access and refresh.');
         } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
           setCameraError('No camera found. Please connect a camera and try again.');
         } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-          setCameraError('Camera is in use by another application. Please close other apps using the camera.');
-        } else if (error.name === 'OverconstrainedError') {
-          // Retry with minimal constraints
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            if (videoRef.current) {
-              videoRef.current.srcObject = stream;
-              setCameraReady(true);
-              return;
-            }
-          } catch {
-            setCameraError('Could not access camera with any settings.');
-            return;
-          }
-          setCameraError('Camera does not meet requirements.');
+          setCameraError('Camera is in use by another application.');
         } else {
           setCameraError(`Camera error: ${error.message}`);
         }
@@ -113,7 +120,6 @@ export default function SignPractice({
     startCamera();
     const videoEl = videoRef.current;
 
-    // Cleanup camera on unmount
     return () => {
       if (videoEl?.srcObject) {
         const tracks = (videoEl.srcObject as MediaStream).getTracks();
@@ -122,191 +128,251 @@ export default function SignPractice({
     };
   }, [startCamera]);
 
-  // Timer for elapsed streaming time
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+  // ============================================================
+  // TRANSCRIPTION UPDATES
+  // ============================================================
 
-    if (isStreaming && streamStartTime) {
-      intervalId = setInterval(() => {
-        setElapsedTime(Math.floor((Date.now() - streamStartTime) / 1000));
-      }, 1000);
-    }
-
-    return () => clearInterval(intervalId);
-  }, [isStreaming, streamStartTime]);
-
-  // Notify parent of transcription updates
   useEffect(() => {
     if (onTranscriptionUpdate && transcription) {
       onTranscriptionUpdate(transcription);
     }
   }, [transcription, onTranscriptionUpdate]);
 
-  const connect = useCallback(() => {
-    if (!apiKey) {
-      alert('API Key not configured');
+  // ============================================================
+  // COUNTDOWN TIMER
+  // ============================================================
+
+  useEffect(() => {
+    if (countdown === null || countdown < 0) return;
+
+    if (countdown === 0) {
+      // Countdown finished - capture and recognize
+      captureAndRecognize();
       return;
     }
 
-    const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
-    const ws = new WebSocket(url);
+    const timerId = setTimeout(() => {
+      setCountdown(countdown - 1);
+    }, 1000);
 
-    ws.onopen = () => {
-      console.log('[SignPractice] Connected to Gemini Live');
-      setIsConnected(true);
+    return () => clearTimeout(timerId);
+  }, [countdown]);
 
-      // Send setup message with targeted system instruction
-      const setupMsg = {
-        setup: {
-          model: `models/${GEMINI_MODELS.GEMINI_2_5_FLASH_NATIVE}`,
-          generationConfig: {
-            responseModalities: ['TEXT'],
-            speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } },
-            },
-          },
-          systemInstruction: {
-            parts: [
-              {
-                text: `You are an expert ASL (American Sign Language) interpreter. Your task is to recognize the sign language gestures shown in the video stream and output what is being signed.
+  // ============================================================
+  // CAPTURE AND RECOGNIZE
+  // ============================================================
 
-The user is trying to sign the word: "${expectedWord}"
+  const captureFrame = useCallback((): string | null => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
 
-Output ONLY the letters or word you recognize. Be concise:
-- For fingerspelling, output each letter as you see it (e.g., "H E L L O")
-- For word signs, output the word (e.g., "HELLO")
-
-If you don't see clear hand gestures, output nothing. Do not hallucinate or guess.`,
-              },
-            ],
-          },
-        },
-      };
-      ws.send(JSON.stringify(setupMsg));
-    };
-
-    ws.onmessage = (event) => {
-      const parseMessage = async (data: Blob | string) => {
-        const textData = typeof data === 'string' ? data : await data.text();
-        try {
-          const response = JSON.parse(textData) as LiveIncomingMessage;
-          const parts = response.serverContent?.modelTurn?.parts;
-          if (parts) {
-            const text = parts.map((p) => p.text).join('');
-            if (text) {
-              setTranscription((prev) => prev + text);
-            }
-          }
-        } catch (e) {
-          console.error('[SignPractice] Error parsing message', e);
-        }
-      };
-      parseMessage(event.data);
-    };
-
-    ws.onerror = (err) => {
-      console.error('[SignPractice] WebSocket Error:', err);
-      setIsConnected(false);
-    };
-
-    ws.onclose = () => {
-      console.log('[SignPractice] Disconnected');
-      setIsConnected(false);
-      setSocket(null);
-    };
-
-    setSocket(ws);
-  }, [apiKey, expectedWord]);
-
-  const disconnect = useCallback(() => {
-    if (socket) {
-      socket.close();
-      setSocket(null);
+    if (!video || !canvas) {
+      console.error('[SignPractice] Video or canvas ref missing');
+      return null;
     }
-  }, [socket]);
 
-  const startStreaming = useCallback(() => {
-    setIsStreaming(true);
-    setStreamStartTime(Date.now());
-    setTranscription('');
-    setElapsedTime(0);
-    frameCountRef.current = 0;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      console.error('[SignPractice] Could not get canvas context');
+      return null;
+    }
+
+    // Use 768x768 for optimal quality
+    const targetSize = 768;
+    canvas.width = targetSize;
+    canvas.height = targetSize;
+
+    // Center crop to square
+    const videoAspect = video.videoWidth / video.videoHeight;
+    let srcX = 0,
+      srcY = 0,
+      srcW = video.videoWidth,
+      srcH = video.videoHeight;
+
+    if (videoAspect > 1) {
+      srcW = video.videoHeight;
+      srcX = (video.videoWidth - srcW) / 2;
+    } else {
+      srcH = video.videoWidth;
+      srcY = (video.videoHeight - srcH) / 2;
+    }
+
+    ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, targetSize, targetSize);
+
+    // Get base64 without the data URL prefix
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const base64 = dataUrl.split(',')[1];
+
+    console.log('[SignPractice] 📷 Captured frame:', {
+      size: `${targetSize}x${targetSize}`,
+      base64Length: base64.length,
+    });
+
+    return base64;
   }, []);
 
-  const stopStreaming = useCallback(() => {
-    setIsStreaming(false);
-    const duration = streamStartTime ? Date.now() - streamStartTime : 0;
-    onComplete(transcription, duration, frameCountRef.current);
-  }, [transcription, streamStartTime, onComplete]);
+  const captureAndRecognize = useCallback(async () => {
+    console.log('[SignPractice] 🎯 Capturing frame for letter:', currentLetter);
 
-  // Frame processing loop
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    setIsProcessing(true);
+    setLastResult(null);
 
-    if (isConnected && isStreaming && videoRef.current && canvasRef.current && socket) {
-      intervalId = setInterval(() => {
-        if (socket.readyState !== WebSocket.OPEN) return;
+    const imageBase64 = captureFrame();
 
-        const video = videoRef.current!;
-        const canvas = canvasRef.current!;
-        const ctx = canvas.getContext('2d');
-
-        if (!ctx) return;
-
-        canvas.width = video.videoWidth / 2;
-        canvas.height = video.videoHeight / 2;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        const base64Data = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
-
-        const msg = {
-          realtimeInput: {
-            mediaChunks: [
-              {
-                mimeType: 'image/jpeg',
-                data: base64Data,
-              },
-            ],
-          },
-        };
-        socket.send(JSON.stringify(msg));
-        frameCountRef.current++;
-      }, 200); // 5 FPS
+    if (!imageBase64) {
+      console.error('[SignPractice] Failed to capture frame');
+      setLastResult('?');
+      setTranscription((prev) => prev + '?');
+      advanceToNextLetter();
+      setIsProcessing(false);
+      return;
     }
 
-    return () => clearInterval(intervalId);
-  }, [isConnected, isStreaming, socket]);
+    try {
+      console.log('[SignPractice] 📤 Sending image to /api/game/recognize');
 
-  // Format time as MM:SS
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+      const response = await fetch('/api/game/recognize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageBase64 }),
+      });
 
-  // Determine if we should show the loading/error overlay
+      const data: RecognizeResponse = await response.json();
+
+      console.log('[SignPractice] 📥 Recognition result:', {
+        success: data.success,
+        letter: data.letter,
+        cost: data.metrics?.cost,
+        latency: data.metrics?.latencyMs,
+      });
+
+      const recognizedLetter = data.letter || '?';
+
+      setLastResult(recognizedLetter);
+      setTranscription((prev) => prev + recognizedLetter);
+
+      if (data.metrics?.cost) {
+        setTotalCost((prev) => prev + data.metrics!.cost);
+      }
+
+      // Advance immediately for better flow
+      advanceToNextLetter();
+      setIsProcessing(false);
+    } catch (error) {
+      console.error('[SignPractice] ❌ Recognition error:', error);
+      setLastResult('?');
+      setTranscription((prev) => prev + '?');
+
+      advanceToNextLetter();
+      setIsProcessing(false);
+    }
+  }, [currentLetter, captureFrame]);
+
+  // ============================================================
+  // NAVIGATION
+  // ============================================================
+
+  const advanceToNextLetter = useCallback(() => {
+    const nextIndex = currentLetterIndex + 1;
+
+    if (nextIndex >= letters.length) {
+      // All letters done - complete the session
+      console.log('[SignPractice] ✅ All letters completed');
+      const durationMs = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
+
+      // Use setTimeout to ensure state is updated before calling onComplete
+      setTimeout(() => {
+        setTranscription((prev) => {
+          onComplete(prev, durationMs, letters.length);
+          return prev;
+        });
+      }, 500);
+    } else {
+      // Move to next letter
+      console.log('[SignPractice] ➡️ Advancing to letter:', letters[nextIndex]);
+      setCurrentLetterIndex(nextIndex);
+      setLastResult(null);
+      setCountdown(COUNTDOWN_SECONDS);
+    }
+  }, [currentLetterIndex, letters, onComplete]);
+
+  const startPractice = useCallback(() => {
+    console.log('[SignPractice] 🎬 Starting practice for word:', expectedWord);
+    setIsStarted(true);
+    setCurrentLetterIndex(0);
+    setTranscription('');
+    setTotalCost(0);
+    startTimeRef.current = Date.now();
+    setCountdown(COUNTDOWN_SECONDS);
+  }, [expectedWord]);
+
+  // ============================================================
+  // UI HELPERS
+  // ============================================================
+
   const showLoadingOverlay = !cameraReady && !cameraError;
   const showErrorOverlay = !!cameraError;
 
+  // Get display for letter progress
+  const getLetterDisplay = () => {
+    return letters.map((letter, idx) => {
+      const isActive = idx === currentLetterIndex;
+      const isDone = idx < currentLetterIndex;
+      const resultLetter = transcription[idx];
+      const isCorrect = resultLetter === letter;
+
+      return (
+        <span
+          key={idx}
+          className={`w-12 h-12 mx-1 rounded-lg flex items-center justify-center text-2xl font-bold transition-all ${
+            isActive
+              ? 'ring-4 ring-offset-2 scale-110'
+              : isDone
+                ? isCorrect
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-red-100 text-red-700'
+                : 'bg-gray-100 text-gray-400'
+          }`}
+          style={{
+            backgroundColor: isActive ? `${lineColor}20` : undefined,
+            color: isActive ? lineColor : undefined,
+            // @ts-expect-error ringColor is a Tailwind CSS variable
+            '--tw-ring-color': isActive ? lineColor : undefined,
+          }}
+        >
+          {isDone ? resultLetter : letter}
+        </span>
+      );
+    });
+  };
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-2xl mx-auto">
-      {/* Target Word Display */}
+      {/* Letter Progress Display */}
       <div
         className="w-full p-6 rounded-2xl text-center"
         style={{ backgroundColor: `${lineColor}15` }}
       >
-        <div className="text-sm text-gray-600 mb-2">Sign this word:</div>
-        <div
-          className="text-5xl font-bold tracking-wider"
-          style={{ color: lineColor }}
-        >
-          {expectedWord}
+        <div className="text-sm text-gray-600 mb-4">
+          {isComplete ? 'Complete!' : isStarted ? `Sign this letter:` : 'Sign this word:'}
         </div>
+
+        {isStarted ? (
+          <div className="flex justify-center items-center flex-wrap">{getLetterDisplay()}</div>
+        ) : (
+          <div className="text-5xl font-bold tracking-wider" style={{ color: lineColor }}>
+            {expectedWord}
+          </div>
+        )}
       </div>
 
-      {/* Video Container - ALWAYS rendered so ref attaches */}
+      {/* Video Container */}
       <div className="relative w-full aspect-video bg-gray-900 rounded-2xl overflow-hidden shadow-xl">
-        {/* Video element - always in DOM */}
+        {/* Video element */}
         <video
           ref={videoRef}
           autoPlay
@@ -335,16 +401,7 @@ If you don't see clear hand gestures, output nothing. Do not hallucinate or gues
             <div className="text-4xl mb-4">📷</div>
             <h3 className="text-xl font-bold text-white mb-2">Camera Access Required</h3>
             <div className="text-red-400 text-center mb-4 text-sm max-w-sm">{cameraError}</div>
-            
-            <div className="bg-gray-800 p-4 rounded-xl mb-4 text-sm text-gray-300 max-w-sm">
-              <p className="font-medium mb-2">How to enable camera:</p>
-              <ol className="list-decimal list-inside space-y-1 text-gray-400">
-                <li>Click the camera icon in address bar</li>
-                <li>Select &quot;Allow&quot; for camera access</li>
-                <li>Click &quot;Retry&quot; below</li>
-              </ol>
-            </div>
-            
+
             <button
               onClick={startCamera}
               className="px-6 py-2 text-white rounded-lg transition-colors hover:brightness-110"
@@ -355,94 +412,87 @@ If you don't see clear hand gestures, output nothing. Do not hallucinate or gues
           </div>
         )}
 
-        {/* Status Indicator - only show when camera is ready */}
-        {cameraReady && (
-          <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-full">
+        {/* Countdown Overlay */}
+        {countdown !== null && countdown > 0 && !isProcessing && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
+            <div className="text-sm text-white/80 mb-2">Get ready to sign</div>
+            <div className="text-9xl font-bold animate-pulse" style={{ color: lineColor }}>
+              {countdown}
+            </div>
+            <div className="text-4xl font-bold mt-4 text-white">{currentLetter}</div>
+          </div>
+        )}
+
+        {/* Processing Overlay */}
+        {isProcessing && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
             <div
-              className={`w-3 h-3 rounded-full ${
-                isStreaming ? 'bg-red-500 animate-pulse' : isConnected ? 'bg-green-500' : 'bg-gray-500'
-              }`}
+              className="animate-spin w-16 h-16 border-4 border-white/30 rounded-full mb-4"
+              style={{ borderTopColor: lineColor }}
             />
-            <span className="text-xs font-mono text-white">
-              {isStreaming ? 'RECORDING' : isConnected ? 'READY' : 'CONNECTING...'}
-            </span>
+            <p className="text-white text-lg">Analyzing...</p>
           </div>
         )}
 
-        {/* Timer */}
-        {isStreaming && (
-          <div className="absolute top-4 left-4 bg-black/50 px-3 py-1.5 rounded-full">
-            <span className="text-white font-mono text-lg">{formatTime(elapsedTime)}</span>
+        {/* Result Flash */}
+        {lastResult && !isProcessing && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 animate-pulse">
+            <div
+              className={`text-9xl font-bold ${
+                lastResult === currentLetter ? 'text-green-400' : 'text-yellow-400'
+              }`}
+            >
+              {lastResult}
+            </div>
           </div>
         )}
 
-        {/* Controls Overlay - only show when camera is ready */}
-        {cameraReady && (
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
-            {!isConnected ? (
-              <button
-                onClick={connect}
-                className="px-6 py-3 rounded-full font-medium transition-all transform hover:scale-105 active:scale-95 text-white"
-                style={{ backgroundColor: lineColor }}
-              >
-                Connect to Start
-              </button>
-            ) : !isStreaming ? (
-              <button
-                onClick={startStreaming}
-                className="px-8 py-3 rounded-full font-bold text-white transition-all transform hover:scale-105 active:scale-95 shadow-lg"
-                style={{ backgroundColor: lineColor }}
-              >
-                ▶ Start Signing
-              </button>
-            ) : (
-              <button
-                onClick={stopStreaming}
-                className="px-8 py-3 bg-red-500 hover:bg-red-600 rounded-full font-bold text-white transition-all transform hover:scale-105 active:scale-95 shadow-lg"
-              >
-                ■ Done
-              </button>
-            )}
+        {/* Start Button - only show when camera is ready and not started */}
+        {cameraReady && !isStarted && (
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+            <button
+              onClick={startPractice}
+              className="px-8 py-3 rounded-full font-bold text-white transition-all transform hover:scale-105 active:scale-95 shadow-lg"
+              style={{ backgroundColor: lineColor }}
+            >
+              ▶ Start Practice
+            </button>
           </div>
         )}
       </div>
 
       {/* Live Transcription */}
-      <div
-        className="w-full p-6 rounded-2xl min-h-[100px]"
-        style={{ backgroundColor: '#f8f6f0' }}
-      >
+      <div className="w-full p-6 rounded-2xl min-h-[80px]" style={{ backgroundColor: '#f8f6f0' }}>
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-mono text-gray-500 uppercase tracking-wider">
-            Live Recognition
+            Your Signs
           </span>
           {transcription && (
             <span className="text-xs text-gray-400">
-              {transcription.length} characters
+              {transcription.length} / {letters.length} letters
             </span>
           )}
         </div>
-        <p className="text-2xl font-medium leading-relaxed font-mono whitespace-pre-wrap text-gray-800">
-          {transcription || (
-            <span className="text-gray-400 italic">
-              {cameraReady
-                ? isConnected
-                  ? 'Start signing to see recognition...'
-                  : 'Connect to begin...'
-                : 'Waiting for camera...'}
-            </span>
-          )}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-3xl font-bold font-mono tracking-wider text-gray-800">
+            {transcription || (
+              <span className="text-gray-400 italic text-lg font-normal">
+                {cameraReady
+                  ? isStarted
+                    ? 'Waiting for your sign...'
+                    : 'Press Start to begin'
+                  : 'Waiting for camera...'}
+              </span>
+            )}
+          </p>
+        </div>
+        {totalCost > 0 && (
+          <div className="text-xs text-gray-400 mt-2">API Cost: ${totalCost.toFixed(4)}</div>
+        )}
       </div>
 
       {/* Cancel Button */}
-      <button
-        onClick={() => {
-          disconnect();
-          onCancel();
-        }}
-        className="text-gray-500 hover:text-gray-700 underline text-sm"
-      >
+      <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 underline text-sm">
         Cancel and go back
       </button>
     </div>

@@ -8,8 +8,10 @@ export const GEMINI_MODELS = {
   // Gemini 2.5 Series (REST API)
   GEMINI_2_5_FLASH: 'gemini-2.5-flash',
   GEMINI_2_5_PRO: 'gemini-2.5-pro',
-  // Gemini 2.5 Series (Live API - for WebSocket streaming)
-  GEMINI_2_5_FLASH_NATIVE: 'gemini-2.5-flash-native-audio-preview-12-2025',
+  // Gemini 2.5 Series (Live API - AUDIO only)
+  GEMINI_2_5_FLASH_NATIVE_AUDIO: 'gemini-2.5-flash-native-audio-preview-12-2025',
+  // Gemini 2.0 (Live API - supports VIDEO/IMAGE streaming)
+  GEMINI_2_0_FLASH_LIVE: 'gemini-2.0-flash-exp',
   // Gemini 3 Series
   GEMINI_3_FLASH: 'gemini-3-flash-preview',
   GEMINI_3_PRO: 'gemini-3-pro-preview',
@@ -37,9 +39,13 @@ const PRICING: Record<GeminiModel, ModelPricing> = {
     input: 1.25 / 1_000_000,
     output: 10.0 / 1_000_000,
   },
-  [GEMINI_MODELS.GEMINI_2_5_FLASH_NATIVE]: {
-    input: 3.0 / 1_000_000, //Video
-    output: 2.0 / 1_000_000, //Text
+  [GEMINI_MODELS.GEMINI_2_5_FLASH_NATIVE_AUDIO]: {
+    input: 3.0 / 1_000_000, // $3.00/1M for audio/video input
+    output: 2.0 / 1_000_000, // $2.00/1M for text output
+  },
+  [GEMINI_MODELS.GEMINI_2_0_FLASH_LIVE]: {
+    input: 0.1 / 1_000_000, // Video/Image
+    output: 0.4 / 1_000_000, // Text
   },
   [GEMINI_MODELS.GEMINI_3_FLASH]: {
     input: 0.5 / 1_000_000,

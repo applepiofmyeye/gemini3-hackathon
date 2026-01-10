@@ -76,6 +76,55 @@ export class GeminiRestClient {
   }
 
   /**
+   * Generate content with image + text (multimodal).
+   * Used for ASL recognition from camera snapshots.
+   */
+  async generateWithImage(
+    systemMessage: string,
+    humanMessage: string,
+    imageBase64: string,
+    mimeType: string = 'image/jpeg'
+  ): Promise<GenerateResponse> {
+    console.log(`${LOG_PREFIX} Generating content with image [generateWithImage]`);
+
+    try {
+      // Build multimodal content with image and text
+      const prompt = `${systemMessage}\n\n---\n\n${humanMessage}`;
+
+      const result = await this.model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            mimeType,
+            data: imageBase64,
+          },
+        },
+      ]);
+
+      const response = result.response;
+      const text = response.text();
+      const usage = response.usageMetadata;
+
+      console.log(
+        `${LOG_PREFIX} Generation with image complete: ` +
+          `tokens=${usage?.promptTokenCount ?? 0}→${usage?.candidatesTokenCount ?? 0} [generateWithImage]`
+      );
+
+      return {
+        text,
+        usage: {
+          promptTokenCount: usage?.promptTokenCount,
+          candidatesTokenCount: usage?.candidatesTokenCount,
+          totalTokenCount: usage?.totalTokenCount,
+        },
+      };
+    } catch (error) {
+      console.error(`${LOG_PREFIX} Generation with image error: ${error} [generateWithImage]`);
+      throw error;
+    }
+  }
+
+  /**
    * Calculate cost for a generation.
    */
   calculateCost(inputTokens: number, outputTokens: number): number {
