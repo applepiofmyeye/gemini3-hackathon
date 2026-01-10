@@ -44,20 +44,21 @@ Goal: code that looks like it was written by a good human contributor in **this*
 ## Quick workflow
 
 1. Review the diff against `main` and identify suspicious additions:
-    - New comments
-    - New try/catch blocks
-    - New validation/guards
-    - New helper layers / indirection
-    - `any` casts or type escapes
+   - New comments
+   - New try/catch blocks
+   - New validation/guards
+   - New helper layers / indirection
+   - `any` casts or type escapes
 2. For each suspicious change:
-    - Ask: does this improve correctness, clarity, or UX **in this repo’s style**?
-    - If not, delete or simplify it.
+   - Ask: does this improve correctness, clarity, or UX **in this repo’s style**?
+   - If not, delete or simplify it.
 3. Ensure behavior remains correct:
-    - Keep necessary validation at trust boundaries (API routes, user input parsing, external services).
-    - Keep errors observable (don’t swallow); add context only where it helps.
+   - Keep necessary validation at trust boundaries (API routes, user input parsing, external services).
+   - Keep errors observable (don’t swallow); add context only where it helps.
 
 ## Report format (keep it short)
 
 At the end, respond with **only** a 1–3 sentence summary:
+
 - What categories you removed (comments/guards/try-catch/type casts/abstractions)
 - Which areas/files were impacted (high level, no line-by-line)

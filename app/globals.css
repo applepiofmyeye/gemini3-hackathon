@@ -1,8 +1,17 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Hands On Track Color Palette - Singapore MRT inspired */
+  --hot-cream: #f8f6f0;
+  --hot-red: #D42E12;
+  --hot-green: #009645;
+  --hot-orange: #FA9E0D;
+  --hot-purple: #9900AA;
+  --hot-blue: #005EC4;
+  --hot-brown: #8B4513;
+  
+  --background: var(--hot-cream);
+  --foreground: #2d2d2d;
 }
 
 @theme inline {
@@ -12,15 +21,80 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Override dark mode - we want the vibrant light theme */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: var(--hot-cream);
+    --foreground: #2d2d2d;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* Confetti animation for celebrations */
+@keyframes confetti {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(400px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.animate-confetti {
+  animation: confetti 2s ease-out forwards;
+}
+
+/* Smooth page transitions */
+.page-transition {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Logo letter styling */
+.logo-letter {
+  display: inline-block;
+  font-weight: 900;
+  transform-origin: center bottom;
+  transition: transform 0.2s ease;
+}
+
+.logo-letter:hover {
+  transform: scale(1.1) rotate(-3deg);
+}
+
+/* Pulse animation for live indicator */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.pulse-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
