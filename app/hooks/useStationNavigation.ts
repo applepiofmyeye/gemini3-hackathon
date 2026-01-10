@@ -18,11 +18,11 @@ export function useStationNavigation() {
     return (lineId: string, currentStationId: string): VocabularyWord | null => {
       const stations = getWordsByLine(lineId);
       const currentIndex = stations.findIndex((s) => s.id === currentStationId);
-      
+
       if (currentIndex === -1 || currentIndex === stations.length - 1) {
         return null; // No next station
       }
-      
+
       return stations[currentIndex + 1];
     };
   }, []);
@@ -32,7 +32,7 @@ export function useStationNavigation() {
    */
   const goToNext = (lineId: string, currentStationId: string) => {
     const nextStation = getNextStation(lineId, currentStationId);
-    
+
     if (nextStation) {
       router.push(`/${lineId}/${nextStation.id}`);
     } else {

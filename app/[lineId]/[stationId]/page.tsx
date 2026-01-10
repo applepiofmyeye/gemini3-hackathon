@@ -19,7 +19,7 @@ export default function PracticePage() {
   const params = useParams();
   const lineId = params.lineId as string;
   const stationId = params.stationId as string;
-  
+
   const [lines, setLines] = useState<MRTLine[]>(MRT_LINES);
   const [vocabulary, setVocabulary] = useState<Record<string, VocabularyWord[]>>(VOCABULARY);
   const [isConfigLoading, setIsConfigLoading] = useState(true);
@@ -99,7 +99,7 @@ export default function PracticePage() {
       // Submit for validation with the updated session (avoids race condition)
       try {
         const result = await submitForValidation(updatedSession);
-        
+
         // Record progress if we got a score
         if (result.score !== null && currentWord) {
           recordAttempt(currentWord.id, result.score);
@@ -150,7 +150,10 @@ export default function PracticePage() {
   if (isConfigLoading || !isProgressLoaded) {
     return (
       <div className="flex flex-col items-center justify-center p-12 min-h-screen">
-        <div className="animate-spin w-12 h-12 border-4 border-gray-200 rounded-full mb-4" style={{ borderTopColor: line?.color || '#D42E12' }} />
+        <div
+          className="animate-spin w-12 h-12 border-4 border-gray-200 rounded-full mb-4"
+          style={{ borderTopColor: line?.color || '#D42E12' }}
+        />
         <p className="text-gray-600">Loading game...</p>
       </div>
     );

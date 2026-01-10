@@ -45,7 +45,7 @@ export const VOCABULARY: VocabularyByLine = {
       word: 'Novena',
       level: 1,
       meaning: 'Novena',
-    }
+    },
   ],
   'east-west': [
     {
@@ -77,7 +77,7 @@ export const VOCABULARY: VocabularyByLine = {
       word: 'Redhill',
       level: 1,
       meaning: 'Redhill',
-    }
+    },
   ],
   'north-east': [
     {
@@ -109,7 +109,7 @@ export const VOCABULARY: VocabularyByLine = {
       word: 'Harbourfront',
       level: 1,
       meaning: 'Harbourfront',
-    }
+    },
   ],
   circle: [
     {
@@ -141,7 +141,7 @@ export const VOCABULARY: VocabularyByLine = {
       word: 'MBS',
       level: 1,
       meaning: 'To represent our Bayfront Station!',
-    }
+    },
   ],
   downtown: [
     {
@@ -175,7 +175,7 @@ export const VOCABULARY: VocabularyByLine = {
       meaning: 'To represent our Esplanade Mall!',
     },
   ],
-  'tel': [
+  tel: [
     {
       id: 'tecl-siglap',
       word: 'Siglap',
@@ -205,8 +205,8 @@ export const VOCABULARY: VocabularyByLine = {
       word: 'Bright Hill',
       level: 1,
       meaning: 'Bright Hill',
-    }
-  ]
+    },
+  ],
 };
 
 /**

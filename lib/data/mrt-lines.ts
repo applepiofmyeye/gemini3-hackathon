@@ -67,7 +67,7 @@ export const MRT_LINES: MRTLine[] = [
     bgGradient: 'from-brown-600 to-brown-500',
     description: 'From Tuas Link to Bright Hill',
     stations: ['Tuas Link', 'Bright Hill'],
-  }
+  },
 ];
 
 /**

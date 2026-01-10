@@ -21,13 +21,13 @@ interface MRTMapProps {
 // COMPONENT
 // ============================================================
 
-export default function MRTMap({ 
-  lines, 
-  vocabulary, 
-  completedWords, 
+export default function MRTMap({
+  lines,
+  vocabulary,
+  completedWords,
   currentLineId,
   currentStationId,
-  onSelectWord 
+  onSelectWord,
 }: MRTMapProps) {
   const [expandedLine, setExpandedLine] = useState<string | null>(currentLineId || null);
 
@@ -116,8 +116,16 @@ export default function MRTMap({
                             isCurrent ? 'ring-4 ring-offset-2' : ''
                           }`}
                           style={{
-                            borderColor: isCurrent ? line.color : isCompleted ? line.color : '#e5e7eb',
-                            backgroundColor: isCurrent ? `${line.color}20` : isCompleted ? `${line.color}10` : 'white',
+                            borderColor: isCurrent
+                              ? line.color
+                              : isCompleted
+                                ? line.color
+                                : '#e5e7eb',
+                            backgroundColor: isCurrent
+                              ? `${line.color}20`
+                              : isCompleted
+                                ? `${line.color}10`
+                                : 'white',
                             // @ts-expect-error Tailwind CSS variable for ring color
                             '--tw-ring-color': isCurrent ? line.color : undefined,
                           }}
@@ -131,7 +139,7 @@ export default function MRTMap({
                               <div className="w-2 h-2 rounded-full bg-white" />
                             </div>
                           )}
-                          
+
                           {/* Completed Check */}
                           {isCompleted && !isCurrent && (
                             <div

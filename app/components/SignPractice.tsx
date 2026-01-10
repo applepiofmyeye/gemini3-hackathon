@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { normalizePracticeWord } from '@/lib/utils/normalize';
+import { playGlobalSfx } from '@/app/hooks/useAudio';
+import { startBackgroundMusic } from '@/app/components/AudioControls';
 
 // ============================================================
 // TYPES
@@ -46,7 +48,7 @@ const COUNTDOWN_SECONDS = 3;
 export default function SignPractice({
   expectedWord,
   lineColor,
-  lineId,
+  lineId: _lineId,
   lineAbbreviation,
   stationId,
   onTranscriptionUpdate,
@@ -235,8 +237,10 @@ export default function SignPractice({
     }
   }, [currentLetterIndex, letters, onComplete]);
 
-  const startPractice = useCallback(() => {
+  const startPractice = useCallback(async () => {
     console.log('[SignPractice] 🎬 Starting practice for word:', expectedWord);
+    // Ensure music is playing when practice starts
+    await startBackgroundMusic();
     setIsStarted(true);
     setCurrentLetterIndex(0);
     setTranscription('');
@@ -292,6 +296,10 @@ export default function SignPractice({
       setLastResult(recognizedLetter);
       setTranscription((prev) => prev + recognizedLetter);
 
+      // Play correct/wrong sound effect
+      const isCorrect = recognizedLetter.toLowerCase() === currentLetter.toLowerCase();
+      playGlobalSfx(isCorrect ? 'correct' : 'wrong');
+
       if (data.metrics?.cost) {
         setTotalCost((prev) => prev + data.metrics!.cost);
       }
@@ -320,6 +328,11 @@ export default function SignPractice({
       // Countdown finished - capture and recognize
       captureAndRecognize();
       return;
+    }
+
+    // Play countdown beep on each tick (3, 2, 1)
+    if (countdown > 0) {
+      playGlobalSfx('countdown');
     }
 
     const timerId = setTimeout(() => {
