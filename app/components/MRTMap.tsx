@@ -12,6 +12,8 @@ interface MRTMapProps {
   lines: MRTLine[];
   vocabulary: Record<string, VocabularyWord[]>;
   completedWords: Set<string>;
+  currentLineId?: string;
+  currentStationId?: string;
   onSelectWord: (lineId: string, wordId: string) => void;
 }
 
@@ -19,8 +21,15 @@ interface MRTMapProps {
 // COMPONENT
 // ============================================================
 
-export default function MRTMap({ lines, vocabulary, completedWords, onSelectWord }: MRTMapProps) {
-  const [expandedLine, setExpandedLine] = useState<string | null>(null);
+export default function MRTMap({ 
+  lines, 
+  vocabulary, 
+  completedWords, 
+  currentLineId,
+  currentStationId,
+  onSelectWord 
+}: MRTMapProps) {
+  const [expandedLine, setExpandedLine] = useState<string | null>(currentLineId || null);
 
   const toggleLine = (lineId: string) => {
     setExpandedLine((prev) => (prev === lineId ? null : lineId));
@@ -98,18 +107,32 @@ export default function MRTMap({ lines, vocabulary, completedWords, onSelectWord
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {words.map((word) => {
                       const isCompleted = completedWords.has(word.id);
+                      const isCurrent = line.id === currentLineId && word.id === currentStationId;
                       return (
                         <button
                           key={word.id}
                           onClick={() => onSelectWord(line.id, word.id)}
-                          className="relative p-4 rounded-xl border-2 text-left transition-all hover:scale-105 active:scale-95"
+                          className={`relative p-4 rounded-xl border-2 text-left transition-all hover:scale-105 active:scale-95 ${
+                            isCurrent ? 'ring-4 ring-offset-2' : ''
+                          }`}
                           style={{
-                            borderColor: isCompleted ? line.color : '#e5e7eb',
-                            backgroundColor: isCompleted ? `${line.color}10` : 'white',
+                            borderColor: isCurrent ? line.color : isCompleted ? line.color : '#e5e7eb',
+                            backgroundColor: isCurrent ? `${line.color}20` : isCompleted ? `${line.color}10` : 'white',
+                            ringColor: isCurrent ? line.color : undefined,
                           }}
                         >
+                          {/* Current Station Indicator */}
+                          {isCurrent && (
+                            <div
+                              className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center animate-pulse"
+                              style={{ backgroundColor: line.color }}
+                            >
+                              <div className="w-2 h-2 rounded-full bg-white" />
+                            </div>
+                          )}
+                          
                           {/* Completed Check */}
-                          {isCompleted && (
+                          {isCompleted && !isCurrent && (
                             <div
                               className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
                               style={{ backgroundColor: line.color }}

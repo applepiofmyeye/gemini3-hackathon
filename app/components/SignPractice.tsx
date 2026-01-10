@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import Image from 'next/image';
 
 // ============================================================
 // TYPES
@@ -10,6 +11,9 @@ interface SignPracticeProps {
   apiKey: string;
   expectedWord: string;
   lineColor: string;
+  lineId: string;
+  lineAbbreviation: string;
+  stationId: string;
   onTranscriptionUpdate?: (text: string) => void;
   onComplete: (finalTranscription: string, durationMs: number, letterCount: number) => void;
   onCancel: () => void;
@@ -41,6 +45,9 @@ const COUNTDOWN_SECONDS = 3;
 export default function SignPractice({
   expectedWord,
   lineColor,
+  lineId,
+  lineAbbreviation,
+  stationId,
   onTranscriptionUpdate,
   onComplete,
   onCancel,
@@ -64,10 +71,18 @@ export default function SignPractice({
   // Timing
   const startTimeRef = useRef<number | null>(null);
 
-  // Letters from expected word
+  // Letters from expected word (for analysis - includes spaces)
   const letters = expectedWord.split('');
   const currentLetter = letters[currentLetterIndex] || '';
   const isComplete = currentLetterIndex >= letters.length;
+
+  // Filtered letters for SVG display (only a-z)
+  const displayLetters = useMemo(() => {
+    return expectedWord
+      .toLowerCase()
+      .split('')
+      .filter((char) => /[a-z]/.test(char));
+  }, [expectedWord]);
 
   // ============================================================
   // CAMERA INITIALIZATION
@@ -319,7 +334,7 @@ export default function SignPractice({
       const isActive = idx === currentLetterIndex;
       const isDone = idx < currentLetterIndex;
       const resultLetter = transcription[idx];
-      const isCorrect = resultLetter === letter;
+      const isCorrect = resultLetter?.toLowerCase() === letter.toLowerCase();
 
       return (
         <span
@@ -352,23 +367,30 @@ export default function SignPractice({
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-2xl mx-auto">
-      {/* Letter Progress Display */}
-      <div
-        className="w-full p-6 rounded-2xl text-center"
-        style={{ backgroundColor: `${lineColor}15` }}
-      >
-        <div className="text-sm text-gray-600 mb-4">
-          {isComplete ? 'Complete!' : isStarted ? `Sign this letter:` : 'Sign this word:'}
-        </div>
-
-        {isStarted ? (
-          <div className="flex justify-center items-center flex-wrap">{getLetterDisplay()}</div>
-        ) : (
-          <div className="text-5xl font-bold tracking-wider" style={{ color: lineColor }}>
-            {expectedWord}
-          </div>
-        )}
+      {/* MRT Station Sign */}
+      <div className="w-full">
+        <Image
+          src={`/mrt-signs/${stationId}.png`}
+          alt={`${lineAbbreviation} ${expectedWord} Station Sign`}
+          width={800}
+          height={200}
+          className="w-full h-auto rounded-2xl shadow-lg"
+          priority
+        />
       </div>
+
+      {/* Letter Progress Display */}
+      {isStarted && (
+        <div
+          className="w-full p-6 rounded-2xl text-center"
+          style={{ backgroundColor: `${lineColor}15` }}
+        >
+          <div className="text-sm text-gray-600 mb-4">
+            {isComplete ? 'Complete!' : `Sign this letter:`}
+          </div>
+          <div className="flex justify-center items-center flex-wrap">{getLetterDisplay()}</div>
+        </div>
+      )}
 
       {/* Video Container */}
       <div className="relative w-full aspect-video bg-gray-900 rounded-2xl overflow-hidden shadow-xl">
@@ -461,6 +483,29 @@ export default function SignPractice({
         )}
       </div>
 
+      {/* Letter Signs Section */}
+      {displayLetters.length > 0 && (
+        <div className="w-full">
+          <div className="text-sm text-gray-600 mb-3 text-center">Letter Signs:</div>
+          <div className="flex flex-wrap justify-center gap-4">
+            {displayLetters.map((letter, index) => (
+              <div key={`${letter}-${index}`} className="flex flex-col items-center gap-2">
+                <div className="w-16 h-16 bg-white rounded-lg shadow-md p-2 flex items-center justify-center">
+                  <Image
+                    src={`/letters/${letter}.svg`}
+                    alt={`Sign for letter ${letter}`}
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <span className="text-gray-700 font-medium text-sm">{letter}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Live Transcription */}
       <div className="w-full p-6 rounded-2xl min-h-[80px]" style={{ backgroundColor: '#f8f6f0' }}>
         <div className="flex items-center justify-between mb-2">
@@ -469,7 +514,7 @@ export default function SignPractice({
           </span>
           {transcription && (
             <span className="text-xs text-gray-400">
-              {transcription.length} / {letters.length} letters
+              {transcription.length} / {letters.length} characters
             </span>
           )}
         </div>

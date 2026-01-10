@@ -102,3 +102,17 @@ body {
   border-radius: 50%;
   animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
+
+/* Train animation for Start Button */
+@keyframes train-move {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-train {
+  animation: train-move 4s linear infinite;
+}
