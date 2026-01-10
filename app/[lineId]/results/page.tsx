@@ -1,27 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import Image from 'next/image';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import { useProgress } from '@/app/hooks/useProgress';
 import { getWordsByLine } from '@/lib/data/vocabulary';
 import { getMRTLineById } from '@/lib/data/mrt-lines';
-import type { VocabularyWord } from '@/lib/data/vocabulary';
 
 export default function ResultsPage() {
   const params = useParams();
   const router = useRouter();
   const lineId = params.lineId as string;
-  
+
   const { progress, isLoaded } = useProgress();
-  const [words, setWords] = useState<VocabularyWord[]>([]);
 
   const line = getMRTLineById(lineId);
 
-  useEffect(() => {
-    if (lineId) {
-      setWords(getWordsByLine(lineId));
-    }
+  // Derive words from lineId - no effect needed
+  const words = useMemo(() => {
+    return lineId ? getWordsByLine(lineId) : [];
   }, [lineId]);
 
   if (!line) {
@@ -31,7 +28,10 @@ export default function ResultsPage() {
   if (!isLoaded) {
     return (
       <div className="flex flex-col items-center justify-center p-12 min-h-screen">
-        <div className="animate-spin w-12 h-12 border-4 border-gray-200 rounded-full mb-4" style={{ borderTopColor: line.color }} />
+        <div
+          className="animate-spin w-12 h-12 border-4 border-gray-200 rounded-full mb-4"
+          style={{ borderTopColor: line.color }}
+        />
         <p className="text-gray-600">Loading results...</p>
       </div>
     );
@@ -50,12 +50,11 @@ export default function ResultsPage() {
   const scores = words
     .map((w) => progress[w.id]?.bestScore)
     .filter((s): s is number => s !== undefined);
-  const averageScore = scores.length > 0 
-    ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-    : 0;
+  const averageScore =
+    scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
 
   return (
-    <div className="min-h-screen bg-[var(--hot-cream)]">
+    <div className="min-h-screen bg-(--hot-cream)">
       <div className="container mx-auto px-4 py-8 flex flex-col items-center min-h-screen relative z-10">
         <div className="w-full max-w-4xl">
           {/* Header */}

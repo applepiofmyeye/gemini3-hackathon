@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { playGlobalSfx } from '@/app/hooks/useAudio';
 
 // ============================================================
 // TYPES
@@ -43,6 +44,23 @@ export default function ResultCard({
   const [confettiPieces, setConfettiPieces] = useState<
     { leftPct: number; delaySec: number; color: string }[]
   >([]);
+  const hasPlayedSoundRef = useRef(false);
+
+  // Play result sound effect once when score is received
+  useEffect(() => {
+    if (score !== null && !hasPlayedSoundRef.current) {
+      hasPlayedSoundRef.current = true;
+      // Play correct sound for passing scores (>=70), wrong sound otherwise
+      playGlobalSfx(score >= 70 ? 'correct' : 'wrong');
+    }
+  }, [score]);
+
+  // Reset sound ref when component unmounts or score becomes null
+  useEffect(() => {
+    if (score === null) {
+      hasPlayedSoundRef.current = false;
+    }
+  }, [score]);
 
   // Trigger confetti for high scores
   useEffect(() => {

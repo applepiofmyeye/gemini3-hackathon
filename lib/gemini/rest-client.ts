@@ -33,7 +33,7 @@ export class GeminiRestClient {
       model: modelName,
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 3000, // Increased by 20% from 2048
       },
     });
 
