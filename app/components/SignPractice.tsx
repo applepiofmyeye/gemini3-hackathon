@@ -487,7 +487,7 @@ export default function SignPractice({
               className="animate-spin w-16 h-16 border-4 border-white/30 rounded-full mb-4"
               style={{ borderTopColor: lineColor }}
             />
-            <p className="text-white text-lg">Analyzing...</p>
+            <p className="text-white text-lg">Analysing...</p>
           </div>
         )}
 

@@ -125,7 +125,7 @@ export default function ResultCard({
           className="animate-spin w-12 h-12 border-4 border-gray-200 rounded-full mx-auto mb-4"
           style={{ borderTopColor: lineColor }}
         />
-        <p className="text-gray-600 text-lg">Analyzing your sign...</p>
+        <p className="text-gray-600 text-lg">Analysing your sign...</p>
         <p className="text-gray-400 text-sm mt-2">This may take a moment</p>
       </div>
     );

@@ -133,9 +133,11 @@ export class ValidationGraph {
         this.client,
         {
           expectedWord: normalizedExpected,
+          originalWord: state.expectedWord,
           transcription: normalizedTranscription,
           score: state.score ?? 0,
           validationResult: validationResult.content,
+          scoringResult: state.scoringResult ?? null,
         },
         'feedback_0',
         state.outputDir
