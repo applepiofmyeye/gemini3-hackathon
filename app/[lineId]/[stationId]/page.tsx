@@ -5,6 +5,7 @@ import { notFound, useParams } from 'next/navigation';
 import MRTMap from '@/app/components/MRTMap';
 import SignPractice from '@/app/components/SignPractice';
 import ResultCard from '@/app/components/ResultCard';
+import ValidationLoadingScreen from '@/app/components/ValidationLoadingScreen';
 import { useGameSession } from '@/app/hooks/useGameSession';
 import { useProgress } from '@/app/hooks/useProgress';
 import { useStationNavigation } from '@/app/hooks/useStationNavigation';
@@ -177,6 +178,11 @@ export default function PracticePage() {
         </button>
       </div>
     );
+  }
+
+  // Show loading screen during validation
+  if ((isValidating || session?.status === 'validating') && currentLine) {
+    return <ValidationLoadingScreen lineColor={currentLine.color} />;
   }
 
   // Show results if validation is complete

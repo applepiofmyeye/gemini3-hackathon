@@ -198,7 +198,7 @@ export default function ResultCard({
               </div>
             </div>
             <div className="p-4 bg-gray-50 rounded-xl">
-              <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Recognized</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">RECOGNISED</div>
               <div className="font-bold text-lg text-gray-800">
                 {transcription || 'Nothing detected'}
               </div>
@@ -208,11 +208,6 @@ export default function ResultCard({
           {/* Feedback */}
           {feedback && (
             <>
-              {/* Main Feedback */}
-              <div className="p-4 rounded-xl" style={{ backgroundColor: `${lineColor}10` }}>
-                <p className="text-gray-700">{feedback.feedbackText}</p>
-              </div>
-
               {/* Encouragement */}
               {feedback.encouragement && (
                 <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
