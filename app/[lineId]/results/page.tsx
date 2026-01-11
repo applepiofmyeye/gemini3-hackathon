@@ -59,8 +59,10 @@ export default function ResultsPage() {
         <div className="w-full max-w-4xl">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">Results</h1>
-            <h2 className="text-2xl font-semibold mb-4" style={{ color: line.color }}>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+              Results
+            </h1>
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4" style={{ color: line.color }}>
               {line.name}
             </h2>
             <div className="flex justify-center mt-6">
@@ -69,7 +71,7 @@ export default function ResultsPage() {
                 alt="Lawrence Wong"
                 width={300}
                 height={300}
-                className="h-auto w-auto max-w-[300px] rounded-lg"
+                className="h-auto w-auto max-w-[200px] sm:max-w-[300px] rounded-lg"
                 priority
               />
             </div>

@@ -58,25 +58,25 @@ export default function ValidationLoadingScreen({ lineColor }: ValidationLoading
       {/* Semi-transparent Overlay */}
       <div className="absolute inset-0 bg-(--hot-cream)/80 backdrop-blur-sm z-10" />
 
-      {/* Content - Train and Text as One Centered Component with Fixed Width */}
+      {/* Content - Train and Text as One Centered Component with Fluid Width */}
       <div className="relative z-20 flex flex-col items-center justify-center w-full px-4">
-        <div className="flex flex-col items-center w-[700px]">
+        <div className="flex flex-col items-center w-full max-w-[700px]">
           {/* Loading Message - MRT Signboard Style */}
           <div className="flex justify-center w-full mb-4">
             <div
-              className="bg-black text-white px-12 py-5 rounded-2xl shadow-2xl border-2 border-gray-800 relative"
+              className="bg-black text-white px-4 sm:px-8 md:px-12 py-4 sm:py-5 rounded-2xl shadow-2xl border-2 border-gray-800 relative"
               style={{ borderBottom: `10px solid ${lineColor}` }}
             >
               <h2
                 key={currentMessageIndex}
-                className="text-2xl md:text-3xl font-bold animate-fadeIn whitespace-nowrap tracking-wide"
+                className="text-lg sm:text-2xl md:text-3xl font-bold animate-fadeIn tracking-wide text-center"
               >
                 {LOADING_MESSAGES[currentMessageIndex]}
               </h2>
             </div>
           </div>
 
-          {/* Animated Train - bigger, fixed width container */}
+          {/* Animated Train - fluid width container */}
           <div className="relative w-full h-32 overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-full flex items-center">
               <div className="w-full h-full relative">
@@ -85,7 +85,7 @@ export default function ValidationLoadingScreen({ lineColor }: ValidationLoading
                   alt="MRT Train"
                   width={650}
                   height={98}
-                  className="w-[650px] h-auto animate-train"
+                  className="w-full max-w-[650px] h-auto animate-train"
                 />
               </div>
             </div>

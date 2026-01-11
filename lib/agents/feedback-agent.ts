@@ -93,7 +93,9 @@ Respond with ONLY valid JSON.`;
       const correctCount = total - wrong.length;
 
       // Keep at most 2 mismatches so the model doesn't over-index on listing.
-      topMismatches = wrong.slice(0, 2).map((m) => ({ expected: m.expected, detected: m.detected }));
+      topMismatches = wrong
+        .slice(0, 2)
+        .map((m) => ({ expected: m.expected, detected: m.detected }));
 
       letterSummary = `\nLetter summary: ${correctCount}/${total} correct.`;
       if (topMismatches.length > 0) {

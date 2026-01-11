@@ -25,6 +25,7 @@ export default function PracticePage() {
   const [vocabulary, setVocabulary] = useState<Record<string, VocabularyWord[]>>(VOCABULARY);
   const [isConfigLoading, setIsConfigLoading] = useState(true);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
 
   const {
     session,
@@ -215,7 +216,11 @@ export default function PracticePage() {
         {/* Side-by-side layout */}
         <div className="flex flex-col lg:flex-row gap-6 w-full">
           {/* Left: MRT Map */}
-          <div className="w-full lg:w-1/3 lg:max-w-md">
+          <div
+            className={`w-full lg:w-1/3 lg:max-w-md transition-all duration-300 ${
+              isMapExpanded ? 'block' : 'hidden lg:block'
+            }`}
+          >
             <MRTMap
               lines={lines}
               vocabulary={vocabulary}
@@ -228,6 +233,17 @@ export default function PracticePage() {
 
           {/* Right: Sign Practice */}
           <div className="flex-1">
+            {/* Map Toggle Button - Mobile Only */}
+            <div className="lg:hidden mb-4">
+              <button
+                onClick={() => setIsMapExpanded(!isMapExpanded)}
+                className="w-full px-4 py-2 rounded-lg font-medium text-white transition-all hover:scale-105 active:scale-95 shadow-md"
+                style={{ backgroundColor: line?.color || '#D42E12' }}
+              >
+                {isMapExpanded ? '▼ Hide Map' : '▲ View Map'}
+              </button>
+            </div>
+
             {currentWord && line && (
               <SignPractice
                 apiKey={process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''}

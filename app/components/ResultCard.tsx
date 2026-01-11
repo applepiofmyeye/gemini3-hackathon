@@ -120,7 +120,7 @@ export default function ResultCard({
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-lg mx-auto p-8 bg-white rounded-2xl shadow-xl text-center">
+      <div className="w-full max-w-lg mx-auto p-4 sm:p-8 bg-white rounded-2xl shadow-xl text-center">
         <div
           className="animate-spin w-12 h-12 border-4 border-gray-200 rounded-full mx-auto mb-4"
           style={{ borderTopColor: lineColor }}
@@ -133,7 +133,7 @@ export default function ResultCard({
 
   if (error) {
     return (
-      <div className="w-full max-w-lg mx-auto p-8 bg-white rounded-2xl shadow-xl">
+      <div className="w-full max-w-lg mx-auto p-4 sm:p-8 bg-white rounded-2xl shadow-xl">
         <div className="text-center mb-6">
           <div className="text-4xl mb-2">😕</div>
           <h2 className="text-xl font-bold text-gray-800">Something went wrong</h2>
@@ -179,7 +179,7 @@ export default function ResultCard({
 
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
         {/* Score Header */}
-        <div className="p-6 text-center" style={{ backgroundColor: `${getScoreColor()}15` }}>
+        <div className="p-4 sm:p-6 text-center" style={{ backgroundColor: `${getScoreColor()}15` }}>
           <div className="text-5xl mb-2">{getScoreEmoji()}</div>
           <div className="text-6xl font-bold mb-2" style={{ color: getScoreColor() }}>
             {score !== null ? score : '--'}
@@ -188,7 +188,7 @@ export default function ResultCard({
         </div>
 
         {/* Details */}
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4">
           {/* Word Comparison */}
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 bg-gray-50 rounded-xl">
@@ -236,7 +236,7 @@ export default function ResultCard({
         </div>
 
         {/* Actions */}
-        <div className="p-6 pt-0 flex gap-4">
+        <div className="p-4 sm:p-6 pt-0 flex gap-4">
           <button
             onClick={onTryAgain}
             className="flex-1 px-6 py-3 rounded-xl font-medium text-white transition-all hover:scale-105 active:scale-95"

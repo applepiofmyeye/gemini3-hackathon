@@ -373,7 +373,7 @@ export default function SignPractice({
           <div className="text-sm text-gray-600 mb-3 text-center">
             {isStarted ? (isComplete ? 'Complete!' : 'Sign this letter:') : 'Letter Signs:'}
           </div>
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
             {letters.map((letter, index) => {
               const isActive = isStarted && index === currentLetterIndex;
               const isDone = isStarted && index < currentLetterIndex;
