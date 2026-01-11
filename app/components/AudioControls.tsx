@@ -11,6 +11,8 @@ const SOUNDTRACK_PATH = '/audio/soundtrack.mp3';
 const MUTE_STORAGE_KEY = 'hands-on-track-audio-muted';
 
 let audioInstance: HTMLAudioElement | null = null;
+// Track whether background music should be playing (user intent)
+let backgroundMusicDesired = false;
 
 function getAudioInstance(): HTMLAudioElement | null {
   if (typeof window === 'undefined') return null;
@@ -18,7 +20,7 @@ function getAudioInstance(): HTMLAudioElement | null {
   if (!audioInstance) {
     audioInstance = new Audio(SOUNDTRACK_PATH);
     audioInstance.loop = true;
-    audioInstance.volume = 0.24; // Reduced by 20% from 0.3
+    audioInstance.volume = 0.24; // Background music volume (24%)
 
     // Load mute preference
     const savedMute = localStorage.getItem(MUTE_STORAGE_KEY);
@@ -35,11 +37,25 @@ export async function startBackgroundMusic() {
   const audio = getAudioInstance();
   if (!audio) return;
 
+  // Mark that music should be playing
+  backgroundMusicDesired = true;
+
+  // If page is hidden, don't try to play now - visibility handler will resume when visible
+  if (typeof document !== 'undefined' && document.hidden) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[AudioControls] Background music desired, will play when page becomes visible');
+    }
+    return;
+  }
+
   try {
     await audio.play();
-    console.log('[AudioControls] Background music started');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[AudioControls] Background music started');
+    }
   } catch (error) {
     console.error('[AudioControls] Failed to start music:', error);
+    backgroundMusicDesired = false;
   }
 }
 
@@ -49,6 +65,7 @@ export async function startBackgroundMusic() {
 
 export default function AudioControls() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const wasPlayingBeforeHiddenRef = useRef(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [useCustomIcons, setUseCustomIcons] = useState(true);
@@ -64,10 +81,38 @@ export default function AudioControls() {
     const handleVolumeChange = () => setIsMuted(audio.muted);
     const handleError = (e: Event) => {
       console.error('[AudioControls] Audio error:', e);
+      // Reset desired flag on error
+      backgroundMusicDesired = false;
+    };
+
+    // Handle page visibility changes (screen off, tab switch, app background)
+    const handleVisibilityChange = () => {
+      const a = audioRef.current;
+      if (!a) return;
+
+      if (document.hidden) {
+        // Page is now hidden - remember if audio was playing and pause it
+        wasPlayingBeforeHiddenRef.current = !a.paused;
+        if (wasPlayingBeforeHiddenRef.current) {
+          a.pause();
+        }
+        // Note: backgroundMusicDesired flag is preserved - we want to resume when visible
+      } else {
+        // Page is now visible - resume if music should be playing and not muted
+        if (backgroundMusicDesired && !a.muted) {
+          a.play().catch((error) => {
+            // Log for debugging but don't throw - autoplay restrictions are expected
+            console.warn('[AudioControls] Failed to resume audio on visibility change:', error);
+            // Reset flag since playback failed
+            backgroundMusicDesired = false;
+          });
+        }
+      }
     };
 
     audio.addEventListener('volumechange', handleVolumeChange);
     audio.addEventListener('error', handleError);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Set ready after microtask
     queueMicrotask(() => {
@@ -78,7 +123,9 @@ export default function AudioControls() {
     return () => {
       audio.removeEventListener('volumechange', handleVolumeChange);
       audio.removeEventListener('error', handleError);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       // Don't pause on unmount - let it keep playing across pages
+      // The audio instance persists as a module-level singleton
     };
   }, []);
 
