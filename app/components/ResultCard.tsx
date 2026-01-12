@@ -265,8 +265,8 @@ export default function ResultCard({
                   Target
                 </span>
               </div>
-              <div className="font-bold text-lg" style={{ color: lineColor }}>
-                {expectedWord}
+              <div className="font-bold text-lg font-mono" style={{ color: lineColor }}>
+                {expectedWord.toUpperCase()}
               </div>
             </div>
             {/* Recognized Word */}

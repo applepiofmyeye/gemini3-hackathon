@@ -20,7 +20,7 @@ function getAudioInstance(): HTMLAudioElement | null {
   if (!audioInstance) {
     audioInstance = new Audio(SOUNDTRACK_PATH);
     audioInstance.loop = true;
-    audioInstance.volume = 0.24; // Background music volume (24%)
+    audioInstance.volume = FULL_VOLUME; // Background music volume
 
     // Load mute preference
     const savedMute = localStorage.getItem(MUTE_STORAGE_KEY);
@@ -31,6 +31,10 @@ function getAudioInstance(): HTMLAudioElement | null {
 
   return audioInstance;
 }
+
+// Volume levels
+const FULL_VOLUME = 0.24; // Normal background music volume (24%)
+const DUCKED_VOLUME = 0.12; // Ducked volume during announcements (50% of normal)
 
 // Global function to start music (called from Start button)
 export async function startBackgroundMusic() {
@@ -57,6 +61,25 @@ export async function startBackgroundMusic() {
     console.error('[AudioControls] Failed to start music:', error);
     backgroundMusicDesired = false;
   }
+}
+
+/**
+ * Duck the background music volume (lower to 50% of normal).
+ * Used during announcement playback so TTS is more audible.
+ */
+export function duckBackgroundMusic() {
+  const audio = getAudioInstance();
+  if (!audio) return;
+  audio.volume = DUCKED_VOLUME;
+}
+
+/**
+ * Restore the background music volume to normal level.
+ */
+export function unduckBackgroundMusic() {
+  const audio = getAudioInstance();
+  if (!audio) return;
+  audio.volume = FULL_VOLUME;
 }
 
 // ============================================================

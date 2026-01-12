@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { PartyPopper, Siren, TrainFront, Volume2 } from 'lucide-react';
 import Toast from './ui/Toast';
 import { audioToObjectUrl } from '@/lib/utils/audio';
+import { duckBackgroundMusic, unduckBackgroundMusic } from './AudioControls';
 
 // ============================================================
 // TYPES
@@ -81,6 +82,10 @@ export default function ArrivalToast({
 
   const cleanupAudio = useCallback(() => {
     if (audioRef.current) {
+      // Remove handlers BEFORE cleanup to prevent false error triggers
+      // (setting src = '' fires onerror in some browsers)
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
       audioRef.current.pause();
       audioRef.current.src = '';
       audioRef.current = null;
@@ -105,18 +110,23 @@ export default function ArrivalToast({
 
       cleanupAudio();
 
+      // Duck background music during announcement
+      duckBackgroundMusic();
+
       const dataUrl = audioToObjectUrl(audioBase64, audioMimeType);
       audioUrlRef.current = dataUrl;
       const audio = new Audio(dataUrl);
       audioRef.current = audio;
 
       audio.onended = () => {
+        unduckBackgroundMusic();
         cleanupAudio();
         setIsPlaying(false);
         onAudioEnd?.();
       };
 
       audio.onerror = () => {
+        unduckBackgroundMusic();
         cleanupAudio();
         setIsPlaying(false);
         setAudioError('Failed to decode audio');
@@ -126,6 +136,9 @@ export default function ArrivalToast({
       await audio.play();
     } catch (error) {
       console.error('[ArrivalToast] Audio playback error:', error);
+
+      // Restore background music volume on error
+      unduckBackgroundMusic();
 
       // Check if this is an autoplay block (NotAllowedError)
       if (error instanceof Error && error.name === 'NotAllowedError') {
@@ -152,12 +165,14 @@ export default function ArrivalToast({
         audioRef.current = new Audio(dataUrl);
 
         audioRef.current.onended = () => {
+          unduckBackgroundMusic();
           cleanupAudio();
           setIsPlaying(false);
           onAudioEnd?.();
         };
 
         audioRef.current.onerror = () => {
+          unduckBackgroundMusic();
           cleanupAudio();
           setIsPlaying(false);
           setAudioError('Failed to decode audio');
@@ -168,11 +183,14 @@ export default function ArrivalToast({
 
     if (audioRef.current) {
       try {
+        // Duck background music during announcement
+        duckBackgroundMusic();
         setAutoplayBlocked(false);
         setIsPlaying(true);
         await audioRef.current.play();
       } catch (err) {
         console.error('[ArrivalToast] Manual play failed:', err);
+        unduckBackgroundMusic();
         setAudioError('Audio playback failed');
         setIsPlaying(false);
       }
@@ -187,6 +205,8 @@ export default function ArrivalToast({
 
     return () => {
       clearTimeout(timer);
+      // Restore background music volume on cleanup
+      unduckBackgroundMusic();
       cleanupAudio();
     };
   }, [cleanupAudio, playAudio]);
@@ -232,7 +252,7 @@ export default function ArrivalToast({
         {scenario === 'safe' && (
           <div className="bg-black/20 rounded-lg px-3 py-2">
             <div className="text-xs uppercase tracking-wider opacity-70 mb-0.5">Station</div>
-            <div className="font-bold text-lg">{targetWord}</div>
+            <div className="font-bold font-mono text-lg">{targetWord.toUpperCase()}</div>
           </div>
         )}
 
