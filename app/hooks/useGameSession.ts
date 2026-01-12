@@ -6,6 +6,7 @@ import type {
   TranscriptionEvent,
   SessionStatus,
 } from '@/lib/schemas/game-session';
+import type { ValidationOutput, ScoringOutput } from '@/lib/schemas/agent-outputs';
 import type { VocabularyWord } from '@/lib/data/vocabulary';
 import type { MRTLine } from '@/lib/data/mrt-lines';
 
@@ -27,8 +28,8 @@ export interface ValidationResponse {
   success: boolean;
   sessionId: string;
   score: number | null;
-  validation: unknown;
-  scoring: unknown;
+  validation: ValidationOutput | null;
+  scoring: ScoringOutput | null;
   feedback: {
     feedbackText: string;
     encouragement: string;

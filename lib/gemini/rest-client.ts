@@ -1,10 +1,21 @@
 import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { calculateCost, GEMINI_MODELS } from '../schemas/cost-tracking';
 
 const LOG_PREFIX = '[GEMINI_REST_CLIENT]';
 
 export interface GenerateResponse {
   text: string;
+  usage?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+  };
+}
+
+export interface GenerateAudioResponse {
+  audioBase64: string;
+  audioMimeType: string;
   usage?: {
     promptTokenCount?: number;
     candidatesTokenCount?: number;
@@ -129,5 +140,76 @@ export class GeminiRestClient {
    */
   calculateCost(inputTokens: number, outputTokens: number): number {
     return calculateCost(inputTokens, outputTokens, this.modelName);
+  }
+
+  /**
+   * Generate audio using Gemini TTS model.
+   * Uses the @google/genai SDK for proper TTS support.
+   *
+   * @param prompt - Text to convert to speech (can include DIRECTOR'S NOTES)
+   * @param voiceName - Prebuilt voice name (default: 'Aoede')
+   * @param model - TTS model to use (default: gemini-2.5-flash-preview-tts)
+   */
+  async generateAudio(
+    prompt: string,
+    voiceName: string = 'Aoede',
+    model: string = GEMINI_MODELS.GEMINI_2_5_FLASH_TTS
+  ): Promise<GenerateAudioResponse> {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable not set');
+    }
+
+    console.log(`${LOG_PREFIX} Generating audio with model: ${model} [generateAudio]`);
+
+    // Use the new @google/genai SDK for TTS
+    const ai = new GoogleGenAI({ apiKey });
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName },
+          },
+        },
+      },
+    });
+
+    const inlineData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+    const audioBase64 = inlineData?.data;
+    const audioMimeType = inlineData?.mimeType ?? 'audio/L16;rate=24000'; // Default to PCM if not specified
+
+    if (!audioBase64) {
+      throw new Error('No audio data in TTS response');
+    }
+
+    // Extract usage metadata
+    const usage = response.usageMetadata || {};
+
+    console.log(
+      `${LOG_PREFIX} Audio generation complete: ` +
+        `${audioBase64.length} bytes, mimeType=${audioMimeType}, ` +
+        `tokens=${usage.promptTokenCount ?? 0}→${usage.candidatesTokenCount ?? 0} [generateAudio]`
+    );
+
+    return {
+      audioBase64,
+      audioMimeType,
+      usage: {
+        promptTokenCount: usage.promptTokenCount,
+        candidatesTokenCount: usage.candidatesTokenCount,
+        totalTokenCount: usage.totalTokenCount,
+      },
+    };
+  }
+
+  /**
+   * Calculate cost for audio generation.
+   */
+  calculateAudioCost(inputTokens: number, outputTokens: number): number {
+    return calculateCost(inputTokens, outputTokens, GEMINI_MODELS.GEMINI_2_5_FLASH_TTS);
   }
 }

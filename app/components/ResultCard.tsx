@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { CheckCircle, XCircle, Target, Hand, Lightbulb, RefreshCw, ArrowRight } from 'lucide-react';
 import { playGlobalSfx } from '@/app/hooks/useAudio';
+import ArrivalToast, { type ArrivalScenario } from './ArrivalToast';
 
 // ============================================================
 // TYPES
@@ -13,6 +15,16 @@ interface FeedbackResult {
   technicalTips: string[];
 }
 
+export interface AnnounceResponse {
+  success: boolean;
+  scenario: ArrivalScenario;
+  message: string;
+  phonetic?: string;
+  audioBase64?: string;
+  audioMimeType?: string;
+  error?: string;
+}
+
 interface ResultCardProps {
   score: number | null;
   expectedWord: string;
@@ -21,6 +33,9 @@ interface ResultCardProps {
   lineColor: string;
   isLoading?: boolean;
   error?: string | null;
+  matchPercentage?: number; // From validation result
+  announcementData?: AnnounceResponse | null; // Passed from parent
+  announcementLoading?: boolean; // Passed from parent
   onTryAgain: () => void;
   onNextWord: () => void;
 }
@@ -37,6 +52,9 @@ export default function ResultCard({
   lineColor,
   isLoading = false,
   error,
+  matchPercentage: _matchPercentage,
+  announcementData,
+  announcementLoading = false,
   onTryAgain,
   onNextWord,
 }: ResultCardProps) {
@@ -45,6 +63,17 @@ export default function ResultCard({
     { leftPct: number; delaySec: number; color: string }[]
   >([]);
   const hasPlayedSoundRef = useRef(false);
+
+  // Toast visibility - controlled by local state, but initialized when data arrives
+  const [toastDismissed, setToastDismissed] = useState(false);
+
+  // Handle toast dismiss
+  const handleToastDismiss = useCallback(() => {
+    setToastDismissed(true);
+  }, []);
+
+  // Derive toast visibility: show if we have data AND it hasn't been dismissed
+  const showToast = !!(announcementData?.success && !toastDismissed);
 
   // Play result sound effect once when score is received
   useEffect(() => {
@@ -100,15 +129,6 @@ export default function ResultCard({
     return '#ef4444'; // Red
   };
 
-  const getScoreEmoji = () => {
-    if (score === null) return '🤔';
-    if (score >= 90) return '🌟';
-    if (score >= 80) return '🎉';
-    if (score >= 70) return '✨';
-    if (score >= 50) return '👍';
-    return '💪';
-  };
-
   const getScoreMessage = () => {
     if (score === null) return 'Processing...';
     if (score >= 90) return 'Perfect!';
@@ -160,6 +180,31 @@ export default function ResultCard({
 
   return (
     <div className="w-full max-w-lg mx-auto relative">
+      {/* Arrival Toast (top-right) */}
+      {showToast && announcementData && (
+        <ArrivalToast
+          scenario={announcementData.scenario}
+          message={announcementData.message}
+          recognizedWord={transcription || '???'}
+          phonetic={announcementData.phonetic}
+          targetWord={expectedWord}
+          audioBase64={announcementData.audioBase64}
+          audioMimeType={announcementData.audioMimeType}
+          onDismiss={handleToastDismiss}
+        />
+      )}
+
+      {/* Loading indicator for announcement */}
+      {announcementLoading && (
+        <div className="fixed top-4 right-4 z-40 bg-white rounded-full px-4 py-2 shadow-lg flex items-center gap-2">
+          <div
+            className="w-4 h-4 border-2 border-gray-200 rounded-full animate-spin"
+            style={{ borderTopColor: lineColor }}
+          />
+          <span className="text-sm text-gray-600">Loading announcement...</span>
+        </div>
+      )}
+
       {/* Confetti Effect */}
       {showConfetti && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
@@ -177,90 +222,118 @@ export default function ResultCard({
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-        {/* Score Header */}
-        <div className="p-6 text-center" style={{ backgroundColor: `${getScoreColor()}15` }}>
-          <div className="text-5xl mb-2">{getScoreEmoji()}</div>
-          <div className="text-6xl font-bold mb-2" style={{ color: getScoreColor() }}>
+      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+        {/* Score Header - Clean MRT signage style */}
+        <div
+          className="p-5 flex items-center gap-4"
+          style={{
+            backgroundColor: `${getScoreColor()}10`,
+            borderBottom: `3px solid ${getScoreColor()}`,
+          }}
+        >
+          <div
+            className="w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-2xl"
+            style={{ backgroundColor: getScoreColor() }}
+          >
             {score !== null ? score : '--'}
           </div>
-          <div className="text-xl font-medium text-gray-700">{getScoreMessage()}</div>
+          <div className="flex-1">
+            <div className="text-lg font-bold text-gray-800">{getScoreMessage()}</div>
+            <div className="text-sm text-gray-500">
+              {score !== null && score >= 70 ? 'Word completed' : 'Keep practicing'}
+            </div>
+          </div>
+          {score !== null && (
+            <div className="shrink-0">
+              {score >= 70 ? (
+                <CheckCircle className="w-8 h-8 text-green-500" />
+              ) : (
+                <XCircle className="w-8 h-8 text-gray-400" />
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Details */}
-        <div className="p-6 space-y-4">
-          {/* Word Comparison */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-gray-50 rounded-xl">
-              <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Target</div>
-              <div className="font-bold text-lg" style={{ color: lineColor }}>
-                {expectedWord}
+        {/* Word Comparison Panel */}
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Target Word */}
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <div className="flex items-center gap-2 mb-1">
+                <Target className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+                  Target
+                </span>
+              </div>
+              <div className="font-bold text-lg font-mono" style={{ color: lineColor }}>
+                {expectedWord.toUpperCase()}
               </div>
             </div>
-            <div className="p-4 bg-gray-50 rounded-xl">
-              <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">RECOGNISED</div>
-              <div className="font-bold text-lg text-gray-800">
-                {transcription || 'Nothing detected'}
+            {/* Recognized Word */}
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <div className="flex items-center gap-2 mb-1">
+                <Hand className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+                  You Signed
+                </span>
+              </div>
+              <div className="font-bold text-lg text-gray-800 font-mono">
+                {transcription || '—'}
               </div>
             </div>
           </div>
 
-          {/* Feedback */}
+          {/* Feedback Section - Compact style */}
           {feedback && (
-            <>
+            <div className="space-y-3">
               {/* Encouragement */}
               {feedback.encouragement && (
-                <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
-                  <p className="text-amber-800 font-medium">{feedback.encouragement}</p>
+                <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 text-sm text-amber-800">
+                  {feedback.encouragement}
                 </div>
               )}
 
               {/* Technical Tips */}
               {feedback.technicalTips && feedback.technicalTips.length > 0 && (
-                <div className="p-4 bg-blue-50 rounded-xl">
-                  <div className="text-xs text-blue-600 uppercase tracking-wider mb-2 font-medium">
-                    Tips to Improve
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lightbulb className="w-4 h-4 text-blue-500" />
+                    <span className="text-xs text-blue-600 uppercase tracking-wider font-medium">
+                      Tips
+                    </span>
                   </div>
-                  <ul className="space-y-2">
-                    {feedback.technicalTips.map((tip, i) => (
-                      <li key={i} className="flex items-start gap-2 text-blue-800">
-                        <span className="text-blue-500 mt-1">•</span>
+                  <ul className="space-y-1.5 text-sm text-blue-800">
+                    {feedback.technicalTips.slice(0, 3).map((tip, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="text-blue-400 mt-0.5">•</span>
                         <span>{tip}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
 
-        {/* Actions */}
-        <div className="p-6 pt-0 flex gap-4">
+        {/* Actions - Clean button style */}
+        <div className="p-5 pt-0 flex gap-3">
           <button
             onClick={onTryAgain}
-            className="flex-1 px-6 py-3 rounded-xl font-medium text-white transition-all hover:scale-105 active:scale-95"
+            className="flex-1 px-4 py-3 rounded-lg font-medium text-white transition-all hover:opacity-90 active:scale-98 flex items-center justify-center gap-2"
             style={{ backgroundColor: lineColor }}
           >
+            <RefreshCw className="w-4 h-4" />
             Try Again
           </button>
           <button
             onClick={onNextWord}
-            className="flex-1 px-6 py-3 rounded-xl font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all hover:scale-105 active:scale-95"
+            className="flex-1 px-4 py-3 rounded-lg font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all active:scale-98 flex items-center justify-center gap-2"
           >
             Next Word
+            <ArrowRight className="w-4 h-4" />
           </button>
         </div>
-
-        {/* Pass/Fail Indicator */}
-        {score !== null && (
-          <div
-            className="py-2 text-center text-sm font-medium text-white"
-            style={{ backgroundColor: score >= 70 ? '#22c55e' : '#9ca3af' }}
-          >
-            {score >= 70 ? '✓ Word Completed!' : 'Keep practicing to complete this word'}
-          </div>
-        )}
       </div>
     </div>
   );

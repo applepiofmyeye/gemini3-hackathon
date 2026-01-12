@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import MRTMap from '@/app/components/MRTMap';
 import SignPractice from '@/app/components/SignPractice';
@@ -15,6 +15,21 @@ import { MRT_LINES } from '@/lib/data/mrt-lines';
 import { VOCABULARY } from '@/lib/data/vocabulary';
 import type { MRTLine } from '@/lib/data/mrt-lines';
 import type { VocabularyWord } from '@/lib/data/vocabulary';
+import type { ArrivalScenario } from '@/app/components/ArrivalToast';
+
+// ============================================================
+// ANNOUNCEMENT TYPES
+// ============================================================
+
+interface AnnounceResponse {
+  success: boolean;
+  scenario: ArrivalScenario;
+  message: string;
+  phonetic?: string;
+  audioBase64?: string;
+  audioMimeType?: string;
+  error?: string;
+}
 
 export default function PracticePage() {
   const params = useParams();
@@ -42,6 +57,11 @@ export default function PracticePage() {
 
   const { progress, isLoaded: isProgressLoaded, recordAttempt } = useProgress();
   const { goToNext, goToHome, goToStation } = useStationNavigation();
+
+  // Announcement state (fetched in parallel with results rendering)
+  const [announcementData, setAnnouncementData] = useState<AnnounceResponse | null>(null);
+  const [announcementLoading, setAnnouncementLoading] = useState(false);
+  const hasRequestedAnnouncementRef = useRef(false);
 
   // Validate route params
   const line = getMRTLineById(lineId);
@@ -79,6 +99,62 @@ export default function PracticePage() {
     initializeGame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineId, stationId, isConfigLoading]);
+
+  // Fetch announcement in parallel when validation completes
+  useEffect(() => {
+    const fetchAnnouncement = async () => {
+      if (
+        !validationResult ||
+        !session?.finalTranscription ||
+        hasRequestedAnnouncementRef.current
+      ) {
+        return;
+      }
+
+      // Only fetch if validation has a score
+      if (validationResult.score === null || validationResult.score === undefined) {
+        return;
+      }
+
+      hasRequestedAnnouncementRef.current = true;
+      setAnnouncementLoading(true);
+
+      try {
+        const response = await fetch('/api/game/announce', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            target: currentWord?.word ?? '',
+            transcription: session.finalTranscription,
+            matchPercentage: validationResult.validation?.matchPercentage ?? validationResult.score,
+          }),
+        });
+
+        const data: AnnounceResponse = await response.json();
+
+        if (data.success) {
+          setAnnouncementData(data);
+        } else {
+          console.error('[PracticePage] Announcement fetch failed:', data.error);
+        }
+      } catch (err) {
+        console.error('[PracticePage] Failed to fetch announcement:', err);
+      } finally {
+        setAnnouncementLoading(false);
+      }
+    };
+
+    fetchAnnouncement();
+  }, [validationResult, session?.finalTranscription, currentWord?.word]);
+
+  // Reset announcement state when game resets
+  useEffect(() => {
+    if (!validationResult) {
+      hasRequestedAnnouncementRef.current = false;
+      setAnnouncementData(null);
+      setAnnouncementLoading(false);
+    }
+  }, [validationResult]);
 
   // Build completed words set from progress
   const completedWords = new Set(
@@ -199,6 +275,9 @@ export default function PracticePage() {
               lineColor={currentLine.color}
               isLoading={isValidating}
               error={sessionError}
+              matchPercentage={validationResult.validation?.matchPercentage}
+              announcementData={announcementData}
+              announcementLoading={announcementLoading}
               onTryAgain={handleTryAgain}
               onNextWord={handleNextWord}
             />
