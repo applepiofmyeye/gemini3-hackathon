@@ -69,6 +69,7 @@ export const AnnouncementOutputSchema = z.object({
   message: z.string(),
   phonetic: z.string().optional(),
   audioBase64: z.string(),
+  audioMimeType: z.string().optional(), // e.g. "audio/L16;rate=24000" or "audio/wav"
   metrics: z.object({
     phoneticCost: z.number().optional(),
     phoneticInputTokens: z.number().optional(),

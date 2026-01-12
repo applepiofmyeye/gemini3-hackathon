@@ -1,7 +1,11 @@
 /**
- * Audio utilities for converting Gemini TTS PCM output to playable WAV format.
+ * Audio utilities for converting Gemini TTS output to playable format.
  *
- * Gemini 2.5 Flash TTS outputs raw PCM audio:
+ * Gemini 2.5 Flash TTS can output:
+ * - Raw PCM audio (audio/L16;rate=24000): needs WAV header wrapping
+ * - Encoded audio (audio/wav, audio/mp3, etc.): can be played directly
+ *
+ * PCM format:
  * - Sample rate: 24000 Hz
  * - Bit depth: 16-bit
  * - Channels: 1 (mono)
@@ -11,6 +15,37 @@ const SAMPLE_RATE = 24000;
 const NUM_CHANNELS = 1;
 const BITS_PER_SAMPLE = 16;
 const BYTES_PER_SAMPLE = BITS_PER_SAMPLE / 8;
+
+/**
+ * Check if a mime type indicates raw PCM audio that needs WAV wrapping.
+ */
+function isPcmMimeType(mimeType: string): boolean {
+  const lower = mimeType.toLowerCase();
+  return lower.startsWith('audio/l16') || lower.startsWith('audio/pcm') || lower === 'audio/raw';
+}
+
+/**
+ * Create an object URL from base64 audio data, handling both PCM and encoded formats.
+ *
+ * @param audioBase64 - Base64-encoded audio data
+ * @param mimeType - Audio mime type (e.g., "audio/L16;rate=24000", "audio/wav")
+ * @returns Object URL that can be used as audio src
+ */
+export function audioToObjectUrl(audioBase64: string, mimeType?: string): string {
+  // Default to PCM if no mime type provided (backwards compatibility)
+  const effectiveMimeType = mimeType || 'audio/L16;rate=24000';
+
+  if (isPcmMimeType(effectiveMimeType)) {
+    // Raw PCM needs WAV header wrapping
+    return pcmToDataUrl(audioBase64);
+  }
+
+  // Already encoded audio - create blob directly
+  const binaryString = atob(audioBase64);
+  const bytes = Uint8Array.from(binaryString, (c) => c.charCodeAt(0));
+  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: effectiveMimeType });
+  return URL.createObjectURL(blob);
+}
 
 /**
  * Convert base64-encoded PCM audio to a WAV Blob.

@@ -202,6 +202,7 @@ export class AnnouncementGraph {
       message,
       phonetic,
       audioBase64: ttsResult.audioBase64,
+      audioMimeType: ttsResult.audioMimeType,
       metrics: {
         ttsCost,
         ttsInputTokens,

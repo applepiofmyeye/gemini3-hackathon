@@ -15,6 +15,7 @@ export interface GenerateResponse {
 
 export interface GenerateAudioResponse {
   audioBase64: string;
+  audioMimeType: string;
   usage?: {
     promptTokenCount?: number;
     candidatesTokenCount?: number;
@@ -177,7 +178,9 @@ export class GeminiRestClient {
       },
     });
 
-    const audioBase64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const inlineData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+    const audioBase64 = inlineData?.data;
+    const audioMimeType = inlineData?.mimeType ?? 'audio/L16;rate=24000'; // Default to PCM if not specified
 
     if (!audioBase64) {
       throw new Error('No audio data in TTS response');
@@ -188,12 +191,13 @@ export class GeminiRestClient {
 
     console.log(
       `${LOG_PREFIX} Audio generation complete: ` +
-        `${audioBase64.length} bytes, ` +
+        `${audioBase64.length} bytes, mimeType=${audioMimeType}, ` +
         `tokens=${usage.promptTokenCount ?? 0}→${usage.candidatesTokenCount ?? 0} [generateAudio]`
     );
 
     return {
       audioBase64,
+      audioMimeType,
       usage: {
         promptTokenCount: usage.promptTokenCount,
         candidatesTokenCount: usage.candidatesTokenCount,

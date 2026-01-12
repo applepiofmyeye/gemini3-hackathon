@@ -25,6 +25,7 @@ interface AnnounceResponse {
   message?: string;
   phonetic?: string;
   audioBase64?: string;
+  audioMimeType?: string;
   metrics?: AnnouncementOutput['metrics'];
   error?: string;
 }
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnnounceR
       message: result.message,
       phonetic: result.phonetic,
       audioBase64: result.audioBase64,
+      audioMimeType: result.audioMimeType,
       metrics: result.metrics,
     });
   } catch (error) {
