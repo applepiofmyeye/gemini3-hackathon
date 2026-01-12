@@ -199,6 +199,7 @@ export default function PracticePage() {
               lineColor={currentLine.color}
               isLoading={isValidating}
               error={sessionError}
+              matchPercentage={validationResult.validation?.matchPercentage}
               onTryAgain={handleTryAgain}
               onNextWord={handleNextWord}
             />

@@ -10,6 +10,8 @@ export const GEMINI_MODELS = {
   GEMINI_2_5_PRO: 'gemini-2.5-pro',
   // Gemini 2.5 Series (Live API - AUDIO only)
   GEMINI_2_5_FLASH_NATIVE_AUDIO: 'gemini-2.5-flash-native-audio-preview-12-2025',
+  // Gemini 2.5 TTS (Text-to-Speech)
+  GEMINI_2_5_FLASH_TTS: 'gemini-2.5-flash-preview-tts',
   // Gemini 2.0 (Live API - supports VIDEO/IMAGE streaming)
   GEMINI_2_0_FLASH_LIVE: 'gemini-2.0-flash-exp',
   // Gemini 3 Series
@@ -42,6 +44,10 @@ const PRICING: Record<GeminiModel, ModelPricing> = {
   [GEMINI_MODELS.GEMINI_2_5_FLASH_NATIVE_AUDIO]: {
     input: 3.0 / 1_000_000, // $3.00/1M for audio/video input
     output: 2.0 / 1_000_000, // $2.00/1M for text output
+  },
+  [GEMINI_MODELS.GEMINI_2_5_FLASH_TTS]: {
+    input: 0.5 / 1_000_000, // Text input tokens
+    output: 10.0 / 1_000_000, // Audio output (per output token/character)
   },
   [GEMINI_MODELS.GEMINI_2_0_FLASH_LIVE]: {
     input: 0.1 / 1_000_000, // Video/Image

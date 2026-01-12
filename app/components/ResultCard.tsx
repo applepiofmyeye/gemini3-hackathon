@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { playGlobalSfx } from '@/app/hooks/useAudio';
+import ArrivalNotification, { type ArrivalScenario } from './ArrivalNotification';
 
 // ============================================================
 // TYPES
@@ -21,8 +22,18 @@ interface ResultCardProps {
   lineColor: string;
   isLoading?: boolean;
   error?: string | null;
+  matchPercentage?: number; // From validation result
   onTryAgain: () => void;
   onNextWord: () => void;
+}
+
+interface AnnounceResponse {
+  success: boolean;
+  scenario: ArrivalScenario;
+  message: string;
+  phonetic?: string;
+  audioBase64?: string;
+  error?: string;
 }
 
 // ============================================================
@@ -37,6 +48,7 @@ export default function ResultCard({
   lineColor,
   isLoading = false,
   error,
+  matchPercentage,
   onTryAgain,
   onNextWord,
 }: ResultCardProps) {
@@ -45,6 +57,66 @@ export default function ResultCard({
     { leftPct: number; delaySec: number; color: string }[]
   >([]);
   const hasPlayedSoundRef = useRef(false);
+
+  // Arrival notification state
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationData, setNotificationData] = useState<AnnounceResponse | null>(null);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const hasRequestedAnnouncementRef = useRef(false);
+
+  // Handle notification dismiss (must be declared before any early returns)
+  const handleNotificationDismiss = useCallback(() => {
+    setShowNotification(false);
+  }, []);
+
+  // Fetch announcement when score is available
+  const fetchAnnouncement = useCallback(async () => {
+    if (!transcription || score === null || hasRequestedAnnouncementRef.current) return;
+
+    hasRequestedAnnouncementRef.current = true;
+    setNotificationLoading(true);
+
+    try {
+      const response = await fetch('/api/game/announce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target: expectedWord,
+          transcription: transcription,
+          matchPercentage: matchPercentage ?? score, // Use matchPercentage if available, else score
+        }),
+      });
+
+      const data: AnnounceResponse = await response.json();
+
+      if (data.success) {
+        setNotificationData(data);
+        setShowNotification(true);
+      } else {
+        console.error('[ResultCard] Announcement failed:', data.error);
+      }
+    } catch (err) {
+      console.error('[ResultCard] Failed to fetch announcement:', err);
+    } finally {
+      setNotificationLoading(false);
+    }
+  }, [transcription, score, expectedWord, matchPercentage]);
+
+  // Trigger announcement fetch when score is received
+  useEffect(() => {
+    if (score !== null && transcription && !hasRequestedAnnouncementRef.current) {
+      fetchAnnouncement();
+    }
+  }, [score, transcription, fetchAnnouncement]);
+
+  // Reset refs when score becomes null
+  useEffect(() => {
+    if (score === null) {
+      hasRequestedAnnouncementRef.current = false;
+      setShowNotification(false);
+      setNotificationData(null);
+    }
+  }, [score]);
 
   // Play result sound effect once when score is received
   useEffect(() => {
@@ -160,6 +232,30 @@ export default function ResultCard({
 
   return (
     <div className="w-full max-w-lg mx-auto relative">
+      {/* Arrival Notification Overlay */}
+      {showNotification && notificationData && (
+        <ArrivalNotification
+          scenario={notificationData.scenario}
+          message={notificationData.message}
+          recognizedWord={transcription || '???'}
+          phonetic={notificationData.phonetic}
+          targetWord={expectedWord}
+          audioBase64={notificationData.audioBase64}
+          onDismiss={handleNotificationDismiss}
+        />
+      )}
+
+      {/* Loading indicator for announcement */}
+      {notificationLoading && (
+        <div className="fixed top-4 right-4 z-40 bg-white rounded-full px-4 py-2 shadow-lg flex items-center gap-2">
+          <div
+            className="w-4 h-4 border-2 border-gray-200 rounded-full animate-spin"
+            style={{ borderTopColor: lineColor }}
+          />
+          <span className="text-sm text-gray-600">Loading announcement...</span>
+        </div>
+      )}
+
       {/* Confetti Effect */}
       {showConfetti && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
