@@ -3,14 +3,14 @@
 /**
  * PlatformArrivalScreen - Full-screen immersive MRT platform results experience.
  *
- * Styled after Singapore MRT PIDS (Passenger Information Display System) boards -
- * the electronic displays at train stations showing arrival info and service alerts.
- * Features dark theme with line-colored accents for an authentic transit feel.
+ * Uses the SkylinePageLayout for consistent visual identity with Singapore
+ * skyline background. Features light theme with line-colored accents.
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { RefreshCw, ArrowRight, Home } from 'lucide-react';
 import { playGlobalSfx } from '@/app/hooks/useAudio';
+import SkylinePageLayout from './SkylinePageLayout';
 import {
   StationHeader,
   ArrivalStatus,
@@ -82,18 +82,6 @@ function getScenarioFromScore(score: number | null): ArrivalScenario {
 // COMPONENT
 // ============================================================
 
-/**
- * PlatformArrivalScreen - Full-screen immersive MRT platform results experience.
- *
- * Composes all PIDS sub-components into a unified display that shows:
- * - Station header with line badge
- * - Arrival status (crashed/delayed/arrived)
- * - Score badge
- * - Word comparison (target vs signed)
- * - Announcement player with TTS
- * - Feedback panel with tips
- * - Action buttons
- */
 export default function PlatformArrivalScreen({
   score,
   expectedWord,
@@ -161,35 +149,37 @@ export default function PlatformArrivalScreen({
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-gray-900 rounded-2xl p-8 text-center border border-gray-800">
-          <div className="text-5xl mb-4">😕</div>
-          <h2 className="text-xl font-bold text-white mb-2">Something went wrong</h2>
-          <p className="text-red-400 mb-6">{error}</p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={onTryAgain}
-              className="px-6 py-3 rounded-xl font-medium text-white transition-all hover:scale-105"
-              style={{ backgroundColor: lineColor }}
-            >
-              Try Again
-            </button>
-            {onGoHome && (
+      <SkylinePageLayout>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-xl border border-gray-200">
+            <div className="text-5xl mb-4">😕</div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+            <p className="text-red-600 mb-6">{error}</p>
+            <div className="flex gap-3 justify-center">
               <button
-                onClick={onGoHome}
-                className="px-6 py-3 rounded-xl font-medium bg-gray-700 hover:bg-gray-600 text-white transition-all hover:scale-105"
+                onClick={onTryAgain}
+                className="px-6 py-3 rounded-xl font-medium text-white transition-all hover:scale-105"
+                style={{ backgroundColor: lineColor }}
               >
-                Go Home
+                Try Again
               </button>
-            )}
+              {onGoHome && (
+                <button
+                  onClick={onGoHome}
+                  className="px-6 py-3 rounded-xl font-medium bg-gray-200 hover:bg-gray-300 text-gray-800 transition-all hover:scale-105"
+                >
+                  Go Home
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </SkylinePageLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 relative overflow-hidden">
+    <SkylinePageLayout>
       {/* Confetti Effect */}
       {showConfetti && (
         <div className="absolute inset-0 pointer-events-none z-50">
@@ -207,116 +197,93 @@ export default function PlatformArrivalScreen({
         </div>
       )}
 
-      {/* Line color accent bar at top */}
-      <div className="h-2 w-full" style={{ backgroundColor: lineColor }} />
+      {/* Main content - compact layout */}
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-4">
+        <div className="w-full max-w-xl space-y-4">
+          {/* Station Header */}
+          <StationHeader
+            lineColor={lineColor}
+            lineAbbreviation={lineAbbreviation}
+            stationName={expectedWord}
+          />
 
-      {/* Main content */}
-      <div className="container mx-auto px-4 py-6 max-w-2xl">
-        {/* Station Header */}
-        <StationHeader
-          lineColor={lineColor}
-          lineAbbreviation={lineAbbreviation}
-          stationName={expectedWord}
-          className="mb-6"
-        />
+          {/* Arrival Status */}
+          <ArrivalStatus scenario={scenario} />
 
-        {/* Arrival Status */}
-        <ArrivalStatus scenario={scenario} className="mb-6" />
+          {/* Score and Word Comparison Row */}
+          <div className="flex items-center gap-4">
+            {/* Score Badge */}
+            {score !== null && (
+              <div className="shrink-0">
+                <ScoreBadge score={score} size="md" />
+              </div>
+            )}
 
-        {/* Score and Word Comparison Row */}
-        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
-          {/* Score Badge */}
-          {score !== null && (
-            <div className="flex justify-center md:justify-start shrink-0">
-              <ScoreBadge score={score} size="md" />
-            </div>
-          )}
-
-          {/* Word Comparison */}
-          <div className="flex-1">
-            <WordComparison
-              targetWord={expectedWord}
-              recognizedWord={transcription || ''}
-              lineColor={lineColor}
-            />
-          </div>
-        </div>
-
-        {/* Announcement Player */}
-        {announcementLoading ? (
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-5 h-5 border-2 border-gray-600 rounded-full animate-spin"
-                style={{ borderTopColor: lineColor }}
+            {/* Word Comparison */}
+            <div className="flex-1 min-w-0">
+              <WordComparison
+                targetWord={expectedWord}
+                recognizedWord={transcription || ''}
+                lineColor={lineColor}
               />
-              <span className="text-gray-400 text-sm">Preparing announcement...</span>
             </div>
           </div>
-        ) : announcementData?.success ? (
-          <AnnouncementPlayer
-            audioBase64={announcementData.audioBase64}
-            audioMimeType={announcementData.audioMimeType}
-            message={announcementData.message}
-            phonetic={announcementData.phonetic}
-            autoPlay={true}
-            onPlayComplete={handleAnnouncementComplete}
-            className="mb-6"
-          />
-        ) : null}
 
-        {/* Feedback Panel */}
-        {feedback && (
-          <FeedbackPanel
-            encouragement={feedback.encouragement}
-            tips={feedback.technicalTips}
-            className="mb-6"
-          />
-        )}
+          {/* Announcement Player */}
+          {announcementLoading ? (
+            <div className="bg-white/80 backdrop-blur border border-gray-200 rounded-xl p-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-5 h-5 border-2 border-gray-300 rounded-full animate-spin"
+                  style={{ borderTopColor: lineColor }}
+                />
+                <span className="text-gray-600 text-sm">Preparing announcement...</span>
+              </div>
+            </div>
+          ) : announcementData?.success ? (
+            <AnnouncementPlayer
+              audioBase64={announcementData.audioBase64}
+              audioMimeType={announcementData.audioMimeType}
+              message={announcementData.message}
+              phonetic={announcementData.phonetic}
+              autoPlay={true}
+              onPlayComplete={handleAnnouncementComplete}
+            />
+          ) : null}
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={onTryAgain}
-            className="flex-1 px-6 py-4 rounded-xl font-medium text-white transition-all hover:opacity-90 active:scale-98 flex items-center justify-center gap-2 shadow-lg"
-            style={{ backgroundColor: lineColor }}
-          >
-            <RefreshCw className="w-5 h-5" />
-            Try Again
-          </button>
-          <button
-            onClick={onNextWord}
-            className="flex-1 px-6 py-4 rounded-xl font-medium bg-gray-800 hover:bg-gray-700 text-white transition-all active:scale-98 flex items-center justify-center gap-2 border border-gray-700"
-          >
-            Next Word
-            <ArrowRight className="w-5 h-5" />
-          </button>
-          {onGoHome && (
-            <button
-              onClick={onGoHome}
-              className="px-6 py-4 rounded-xl font-medium bg-gray-800/50 hover:bg-gray-700 text-gray-400 hover:text-white transition-all flex items-center justify-center gap-2 border border-gray-700/50"
-            >
-              <Home className="w-5 h-5" />
-            </button>
+          {/* Feedback Panel */}
+          {feedback && (
+            <FeedbackPanel encouragement={feedback.encouragement} tips={feedback.technicalTips} />
           )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onTryAgain}
+              className="flex-1 px-5 py-3 rounded-xl font-medium text-white transition-all hover:opacity-90 active:scale-98 flex items-center justify-center gap-2 shadow-lg"
+              style={{ backgroundColor: lineColor }}
+            >
+              <RefreshCw className="w-5 h-5" />
+              Try Again
+            </button>
+            <button
+              onClick={onNextWord}
+              className="flex-1 px-5 py-3 rounded-xl font-medium bg-white hover:bg-gray-50 text-gray-800 transition-all active:scale-98 flex items-center justify-center gap-2 border border-gray-300 shadow-sm"
+            >
+              Next Word
+              <ArrowRight className="w-5 h-5" />
+            </button>
+            {onGoHome && (
+              <button
+                onClick={onGoHome}
+                className="px-4 py-3 rounded-xl font-medium bg-white/80 hover:bg-white text-gray-600 hover:text-gray-800 transition-all flex items-center justify-center gap-2 border border-gray-200"
+              >
+                <Home className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Subtle platform pattern overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-5"
-        style={{
-          backgroundImage: `
-            repeating-linear-gradient(
-              90deg,
-              transparent,
-              transparent 20px,
-              rgba(255,255,255,0.03) 20px,
-              rgba(255,255,255,0.03) 21px
-            )
-          `,
-        }}
-      />
-    </div>
+    </SkylinePageLayout>
   );
 }

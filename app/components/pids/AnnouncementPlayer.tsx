@@ -8,8 +8,9 @@ import { duckBackgroundMusic, unduckBackgroundMusic } from '@/app/components/Aud
 /**
  * AnnouncementPlayer - TTS audio playback with visual indicator.
  *
- * Displays the announcement message with "Now announcing..." pulse indicator
- * and handles audio playback. Can be used for any TTS announcements.
+ * Light-themed player with announcement message and audio controls.
+ * Handles audio playback with background music ducking.
+ * Respects page visibility (pauses when tab is inactive).
  */
 
 interface AnnouncementPlayerProps {
@@ -43,6 +44,7 @@ export default function AnnouncementPlayer({
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const wasPlayingBeforeHiddenRef = useRef(false);
 
   const cleanupAudio = useCallback(() => {
     if (audioRef.current) {
@@ -61,6 +63,11 @@ export default function AnnouncementPlayer({
   const playAudio = useCallback(async () => {
     if (!audioBase64) {
       onPlayComplete?.();
+      return;
+    }
+
+    // Don't try to play if page is hidden
+    if (typeof document !== 'undefined' && document.hidden) {
       return;
     }
 
@@ -152,6 +159,38 @@ export default function AnnouncementPlayer({
     }
   }, [audioBase64, audioMimeType, cleanupAudio, onPlayComplete]);
 
+  // Handle page visibility changes - pause/resume TTS like background music
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      if (document.hidden) {
+        // Page is now hidden - remember if audio was playing and pause it
+        wasPlayingBeforeHiddenRef.current = !audio.paused;
+        if (wasPlayingBeforeHiddenRef.current) {
+          audio.pause();
+        }
+      } else {
+        // Page is now visible - resume if it was playing before
+        if (wasPlayingBeforeHiddenRef.current && audio.paused) {
+          audio.play().catch((error) => {
+            console.warn(
+              '[AnnouncementPlayer] Failed to resume audio on visibility change:',
+              error
+            );
+          });
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   // Auto-play on mount if enabled
   useEffect(() => {
     if (!autoPlay) return;
@@ -178,55 +217,58 @@ export default function AnnouncementPlayer({
   return (
     <div
       className={`
-        bg-gray-800/50 border border-gray-700 rounded-xl p-4
+        bg-white/90 backdrop-blur border border-gray-200 rounded-xl p-4 shadow-sm
         ${className}
       `}
     >
-      {/* Header with playing indicator */}
-      <div className="flex items-center gap-3 mb-3">
+      {/* Header with playing indicator - fixed height to prevent layout shift */}
+      <div className="flex items-center gap-3 mb-3 min-h-[40px]">
         <span
           className={`
-            inline-flex items-center justify-center w-10 h-10 rounded-lg
-            ${isPlaying ? 'bg-green-600/50' : 'bg-gray-700/50'}
+            inline-flex items-center justify-center w-10 h-10 rounded-lg shrink-0
+            ${isPlaying ? 'bg-green-100' : 'bg-gray-100'}
             transition-colors
           `}
         >
           {isPlaying ? (
-            <Radio className="w-5 h-5 text-green-400 animate-pulse" />
+            <Radio className="w-5 h-5 text-green-600 animate-pulse" />
           ) : (
-            <Volume2 className="w-5 h-5 text-gray-400" />
+            <Volume2 className="w-5 h-5 text-gray-500" />
           )}
         </span>
-        <div className="flex-1">
-          <h3 className="text-sm font-medium text-white">
+        <div className="flex-1 min-h-[36px] flex flex-col justify-center">
+          <h3 className="text-sm font-medium text-gray-800">
             {isPlaying ? 'Now Announcing...' : 'Station Announcement'}
           </h3>
-          {isPlaying && (
-            <div className="flex items-center gap-1 text-xs text-green-400">
-              <span className="inline-block w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-              Playing
-            </div>
-          )}
+          {/* Always reserve space for the "Playing" indicator */}
+          <div className="h-4 flex items-center">
+            {isPlaying && (
+              <div className="flex items-center gap-1 text-xs text-green-600">
+                <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                Playing
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Message */}
-      <div className="bg-black/30 rounded-lg px-4 py-3 mb-3">
+      <div className="bg-[#004D44] rounded-lg px-4 py-3 mb-3">
         <p className="text-white italic text-center">&ldquo;{message}&rdquo;</p>
         {phonetic && (
-          <p className="text-gray-400 text-sm text-center mt-1">
+          <p className="text-gray-300 text-sm text-center mt-1">
             Pronounced: &ldquo;{phonetic}&rdquo;
           </p>
         )}
       </div>
 
-      {/* Controls */}
-      <div className="flex gap-2">
+      {/* Controls - fixed height container to prevent layout shift */}
+      <div className="h-10 flex gap-2">
         {/* Autoplay blocked - show play button */}
         {autoplayBlocked && (
           <button
             onClick={handleManualPlay}
-            className="flex-1 py-2 rounded-lg font-medium flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white transition-colors"
+            className="flex-1 rounded-lg font-medium flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white transition-colors"
           >
             <Volume2 className="w-4 h-4" />
             Tap to play
@@ -237,25 +279,33 @@ export default function AnnouncementPlayer({
         {!isPlaying && !autoplayBlocked && audioBase64 && (
           <button
             onClick={handleManualPlay}
-            className="flex-1 py-2 rounded-lg font-medium flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+            className="flex-1 rounded-lg font-medium flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
           >
             <Volume2 className="w-4 h-4" />
             Replay
           </button>
         )}
 
+        {/* Playing state - show disabled indicator */}
+        {isPlaying && (
+          <div className="flex-1 rounded-lg flex items-center justify-center gap-2 bg-green-50 text-green-600 border border-green-200">
+            <Radio className="w-4 h-4 animate-pulse" />
+            Playing...
+          </div>
+        )}
+
         {/* No audio available */}
         {!audioBase64 && (
-          <div className="flex-1 py-2 rounded-lg flex items-center justify-center gap-2 bg-gray-700/50 text-gray-500">
+          <div className="flex-1 rounded-lg flex items-center justify-center gap-2 bg-gray-100 text-gray-400">
             <VolumeX className="w-4 h-4" />
             No audio
           </div>
         )}
       </div>
 
-      {/* Error message */}
+      {/* Error message - only rendered when there's an error */}
       {audioError && (
-        <div className="mt-2 text-center text-xs text-red-400 bg-red-500/10 rounded-lg py-2">
+        <div className="mt-2 text-center text-xs text-red-600 bg-red-50 rounded-lg py-2 border border-red-100">
           {audioError}
         </div>
       )}

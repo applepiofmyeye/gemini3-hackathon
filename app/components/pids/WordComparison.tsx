@@ -5,7 +5,7 @@ import { Target, Hand } from 'lucide-react';
 /**
  * WordComparison - Side-by-side target vs recognized word display.
  *
- * PIDS-style panel showing what was expected vs what was signed.
+ * Light-themed panel showing what was expected vs what was signed.
  * Used in results screen to show comparison.
  */
 
@@ -29,10 +29,10 @@ export default function WordComparison({
   return (
     <div className={`grid grid-cols-2 gap-3 ${className}`}>
       {/* Target Word */}
-      <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+      <div className="bg-white/90 backdrop-blur rounded-xl p-4 border border-gray-200 shadow-sm">
         <div className="flex items-center gap-2 mb-2">
-          <Target className="w-4 h-4 text-gray-400" />
-          <span className="text-xs text-gray-400 uppercase tracking-wider font-medium">Target</span>
+          <Target className="w-4 h-4 text-gray-500" />
+          <span className="text-xs text-gray-500 uppercase tracking-wider font-medium">Target</span>
         </div>
         <div className="font-bold text-xl font-mono tracking-wide" style={{ color: lineColor }}>
           {targetWord.toUpperCase()}
@@ -40,14 +40,14 @@ export default function WordComparison({
       </div>
 
       {/* Recognized Word */}
-      <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+      <div className="bg-white/90 backdrop-blur rounded-xl p-4 border border-gray-200 shadow-sm">
         <div className="flex items-center gap-2 mb-2">
-          <Hand className="w-4 h-4 text-gray-400" />
-          <span className="text-xs text-gray-400 uppercase tracking-wider font-medium">
+          <Hand className="w-4 h-4 text-gray-500" />
+          <span className="text-xs text-gray-500 uppercase tracking-wider font-medium">
             You Signed
           </span>
         </div>
-        <div className="font-bold text-xl font-mono tracking-wide text-white">
+        <div className="font-bold text-xl font-mono tracking-wide text-gray-800">
           {recognizedWord || '—'}
         </div>
       </div>

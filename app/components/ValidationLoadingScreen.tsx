@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import SkylinePageLayout from './SkylinePageLayout';
 
 // ============================================================
 // TYPES
@@ -17,7 +18,7 @@ interface ValidationLoadingScreenProps {
 
 const LOADING_MESSAGES = [
   'Wait ah, checking your signs...',
-  'Don’t kan cheong, PM Wong scanning your hand shapes...',
+  "Don't kan cheong, PM Wong scanning your hand shapes...",
   'Steady lah, calculating your marks now...',
   'Reviewing your signs... wait one second hor!',
   'Almost ready liao, result coming out soon!',
@@ -31,35 +32,19 @@ const LOADING_MESSAGES = [
 export default function ValidationLoadingScreen({ lineColor }: ValidationLoadingScreenProps) {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
 
-  // Cycle through loading messages every 2 seconds
+  // Cycle through loading messages every 3 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-    }, 2000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center min-h-screen bg-(--hot-cream)">
-      {/* Singapore Skyline Background */}
-      <div className="absolute bottom-0 left-0 right-0 z-0">
-        <Image
-          src="/singapore-skyline.png"
-          alt="Singapore Skyline"
-          width={1507}
-          height={560}
-          sizes="100vw"
-          className="w-full h-auto"
-          priority
-        />
-      </div>
-
-      {/* Semi-transparent Overlay */}
-      <div className="absolute inset-0 bg-(--hot-cream)/80 backdrop-blur-sm z-10" />
-
+    <SkylinePageLayout>
       {/* Content - Train and Text as One Centered Component with Fixed Width */}
-      <div className="relative z-20 flex flex-col items-center justify-center w-full px-4">
+      <div className="flex-1 flex items-center justify-center w-full px-4">
         <div className="flex flex-col items-center w-[700px]">
           {/* Loading Message - MRT Signboard Style */}
           <div className="flex justify-center w-full mb-4">
@@ -92,6 +77,6 @@ export default function ValidationLoadingScreen({ lineColor }: ValidationLoading
           </div>
         </div>
       </div>
-    </div>
+    </SkylinePageLayout>
   );
 }
