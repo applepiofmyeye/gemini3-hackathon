@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import MRTMap from '@/app/components/MRTMap';
 import SignPractice from '@/app/components/SignPractice';
-import ResultCard from '@/app/components/ResultCard';
+import PlatformArrivalScreen from '@/app/components/PlatformArrivalScreen';
+import type { AnnounceData } from '@/app/components/PlatformArrivalScreen';
 import ValidationLoadingScreen from '@/app/components/ValidationLoadingScreen';
 import { useGameSession } from '@/app/hooks/useGameSession';
 import { useProgress } from '@/app/hooks/useProgress';
@@ -13,23 +14,9 @@ import { getWordById } from '@/lib/data/vocabulary';
 import { getMRTLineById } from '@/lib/data/mrt-lines';
 import { MRT_LINES } from '@/lib/data/mrt-lines';
 import { VOCABULARY } from '@/lib/data/vocabulary';
+import { estimateMatchPercentage } from '@/lib/utils/string-similarity';
 import type { MRTLine } from '@/lib/data/mrt-lines';
 import type { VocabularyWord } from '@/lib/data/vocabulary';
-import type { ArrivalScenario } from '@/app/components/ArrivalToast';
-
-// ============================================================
-// ANNOUNCEMENT TYPES
-// ============================================================
-
-interface AnnounceResponse {
-  success: boolean;
-  scenario: ArrivalScenario;
-  message: string;
-  phonetic?: string;
-  audioBase64?: string;
-  audioMimeType?: string;
-  error?: string;
-}
 
 export default function PracticePage() {
   const params = useParams();
@@ -58,16 +45,13 @@ export default function PracticePage() {
   const { progress, isLoaded: isProgressLoaded, recordAttempt } = useProgress();
   const { goToNext, goToHome, goToStation } = useStationNavigation();
 
-  // Announcement state (fetched in parallel with results rendering)
-  const [announcementData, setAnnouncementData] = useState<AnnounceResponse | null>(null);
+  const [announcementData, setAnnouncementData] = useState<AnnounceData | null>(null);
   const [announcementLoading, setAnnouncementLoading] = useState(false);
-  const hasRequestedAnnouncementRef = useRef(false);
+  const announcementPromiseRef = useRef<Promise<AnnounceData | null> | null>(null);
 
-  // Validate route params
   const line = getMRTLineById(lineId);
   const word = getWordById(lineId, stationId);
 
-  // Load game configuration on mount
   useEffect(() => {
     const loadConfig = async () => {
       try {
@@ -83,10 +67,8 @@ export default function PracticePage() {
     loadConfig();
   }, [fetchConfig]);
 
-  // Start game session when component mounts or params change
   useEffect(() => {
     if (!line || !word || isConfigLoading) return;
-
     const initializeGame = async () => {
       try {
         await startGame(lineId, stationId);
@@ -95,138 +77,117 @@ export default function PracticePage() {
         setConfigError(e instanceof Error ? e.message : 'Failed to start game');
       }
     };
-
     initializeGame();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineId, stationId, isConfigLoading]);
+  }, [lineId, stationId, isConfigLoading, line, word, startGame]);
 
-  // Fetch announcement in parallel when validation completes
-  useEffect(() => {
-    const fetchAnnouncement = async () => {
-      if (
-        !validationResult ||
-        !session?.finalTranscription ||
-        hasRequestedAnnouncementRef.current
-      ) {
-        return;
-      }
-
-      // Only fetch if validation has a score
-      if (validationResult.score === null || validationResult.score === undefined) {
-        return;
-      }
-
-      hasRequestedAnnouncementRef.current = true;
-      setAnnouncementLoading(true);
-
-      try {
-        const response = await fetch('/api/game/announce', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            target: currentWord?.word ?? '',
-            transcription: session.finalTranscription,
-            matchPercentage: validationResult.validation?.matchPercentage ?? validationResult.score,
-          }),
-        });
-
-        const data: AnnounceResponse = await response.json();
-
-        if (data.success) {
-          setAnnouncementData(data);
-        } else {
-          console.error('[PracticePage] Announcement fetch failed:', data.error);
-        }
-      } catch (err) {
-        console.error('[PracticePage] Failed to fetch announcement:', err);
-      } finally {
-        setAnnouncementLoading(false);
-      }
-    };
-
-    fetchAnnouncement();
-  }, [validationResult, session?.finalTranscription, currentWord?.word]);
-
-  // Reset announcement state when game resets
   useEffect(() => {
     if (!validationResult) {
-      hasRequestedAnnouncementRef.current = false;
       setAnnouncementData(null);
       setAnnouncementLoading(false);
+      announcementPromiseRef.current = null;
     }
   }, [validationResult]);
 
-  // Build completed words set from progress
   const completedWords = new Set(
     Object.entries(progress)
       .filter(([, p]) => p.bestScore >= 70)
       .map(([id]) => id)
   );
 
-  // Handle practice completion
+  const fetchAnnouncement = useCallback(
+    async (
+      target: string,
+      transcription: string,
+      estimatedMatch: number
+    ): Promise<AnnounceData | null> => {
+      try {
+        const response = await fetch('/api/game/announce', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target, transcription, matchPercentage: estimatedMatch }),
+        });
+        const data = await response.json();
+        return data.success ? (data as AnnounceData) : null;
+      } catch (err) {
+        console.error('[PracticePage] Failed to fetch announcement:', err);
+        return null;
+      }
+    },
+    []
+  );
+
   const handlePracticeComplete = useCallback(
     async (finalTranscription: string, durationMs: number, frameCount?: number) => {
-      // Update session with final transcription and get updated session
       const updatedSession = endStreaming(finalTranscription, {
         frameCount: frameCount ?? 0,
         transcriptionLength: finalTranscription.length,
         durationMs,
       });
+      if (!updatedSession || !currentWord) return;
 
-      // Submit for validation with the updated session (avoids race condition)
+      const estimatedMatch = estimateMatchPercentage(currentWord.word, finalTranscription);
+      setAnnouncementLoading(true);
+
+      const announcementPromise = fetchAnnouncement(
+        currentWord.word,
+        finalTranscription,
+        estimatedMatch
+      );
+      announcementPromiseRef.current = announcementPromise;
+
       try {
-        const result = await submitForValidation(updatedSession);
-
-        // Record progress if we got a score
-        if (result.score !== null && currentWord) {
-          recordAttempt(currentWord.id, result.score);
+        const [validationResultData, announcementResultData] = await Promise.all([
+          submitForValidation(updatedSession),
+          announcementPromise,
+        ]);
+        if (validationResultData.score !== null) {
+          recordAttempt(currentWord.id, validationResultData.score);
+        }
+        if (announcementResultData) {
+          setAnnouncementData(announcementResultData);
         }
       } catch (e) {
-        console.error('[PracticePage] Validation failed:', e);
+        console.error('[PracticePage] Validation/Announcement failed:', e);
+      } finally {
+        setAnnouncementLoading(false);
       }
     },
-    [endStreaming, submitForValidation, recordAttempt, currentWord]
+    [endStreaming, submitForValidation, recordAttempt, currentWord, fetchAnnouncement]
   );
 
-  // Handle practice cancellation
   const handlePracticeCancel = useCallback(() => {
     resetGame();
     goToHome();
   }, [resetGame, goToHome]);
 
-  // Handle try again
   const handleTryAgain = useCallback(async () => {
     if (line && word) {
-      try {
-        resetGame();
-        await startGame(lineId, stationId);
-      } catch (e) {
-        console.error('[PracticePage] Failed to restart game:', e);
-      }
+      resetGame();
+      await startGame(lineId, stationId);
     }
   }, [lineId, stationId, line, word, startGame, resetGame]);
 
-  // Handle next word
   const handleNextWord = useCallback(() => {
     resetGame();
     goToNext(lineId, stationId);
   }, [resetGame, goToNext, lineId, stationId]);
 
-  // Handle word selection from map (shouldn't happen in practice mode, but handle gracefully)
+  const handleGoHome = useCallback(() => {
+    resetGame();
+    goToHome();
+  }, [resetGame, goToHome]);
+
   const handleSelectWord = useCallback(
     (selectedLineId: string, selectedWordId: string) => {
-      // Navigate to the selected station using client-side navigation
       goToStation(selectedLineId, selectedWordId);
     },
     [goToStation]
   );
 
-  // Invalid route params
   if (!line || !word) {
     notFound();
   }
 
-  // Loading state
   if (isConfigLoading || !isProgressLoaded) {
     return (
       <div className="flex flex-col items-center justify-center p-12 min-h-screen">
@@ -239,7 +200,6 @@ export default function PracticePage() {
     );
   }
 
-  // Error state
   if (configError) {
     return (
       <div className="flex flex-col items-center justify-center p-12 bg-red-50 rounded-2xl min-h-screen">
@@ -256,44 +216,33 @@ export default function PracticePage() {
     );
   }
 
-  // Show loading screen during validation
   if ((isValidating || session?.status === 'validating') && currentLine) {
     return <ValidationLoadingScreen lineColor={currentLine.color} />;
   }
 
-  // Show results if validation is complete
   if (validationResult !== null && currentWord && currentLine) {
     return (
-      <div className="min-h-screen bg-(--hot-cream)">
-        <div className="container mx-auto px-4 py-8 flex flex-col items-center min-h-screen relative z-10">
-          <div className="w-full max-w-3xl">
-            <ResultCard
-              score={validationResult.score ?? null}
-              expectedWord={currentWord.word}
-              transcription={session?.finalTranscription ?? null}
-              feedback={validationResult.feedback ?? null}
-              lineColor={currentLine.color}
-              isLoading={isValidating}
-              error={sessionError}
-              matchPercentage={validationResult.validation?.matchPercentage}
-              announcementData={announcementData}
-              announcementLoading={announcementLoading}
-              onTryAgain={handleTryAgain}
-              onNextWord={handleNextWord}
-            />
-          </div>
-        </div>
-      </div>
+      <PlatformArrivalScreen
+        score={validationResult.score ?? null}
+        expectedWord={currentWord.word}
+        transcription={session?.finalTranscription ?? null}
+        feedback={validationResult.feedback ?? null}
+        lineColor={currentLine.color}
+        lineAbbreviation={line.abbreviation}
+        announcementData={announcementData}
+        announcementLoading={announcementLoading}
+        error={sessionError}
+        onTryAgain={handleTryAgain}
+        onNextWord={handleNextWord}
+        onGoHome={handleGoHome}
+      />
     );
   }
 
-  // Show practice interface
   return (
     <div className="min-h-screen bg-(--hot-cream)">
       <div className="container mx-auto px-4 py-8 flex flex-col min-h-screen relative z-10">
-        {/* Side-by-side layout */}
         <div className="flex flex-col lg:flex-row gap-6 w-full">
-          {/* Left: MRT Map */}
           <div className="w-full lg:w-1/3 lg:max-w-md">
             <MRTMap
               lines={lines}
@@ -304,8 +253,6 @@ export default function PracticePage() {
               onSelectWord={handleSelectWord}
             />
           </div>
-
-          {/* Right: Sign Practice */}
           <div className="flex-1">
             {currentWord && line && (
               <SignPractice
