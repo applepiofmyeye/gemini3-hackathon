@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { normalizePracticeWord } from '@/lib/utils/normalize';
 import { playGlobalSfx } from '@/app/hooks/useAudio';
 import { startBackgroundMusic } from '@/app/components/AudioControls';
+import { generatePracticeId, createTimer } from '@/lib/utils/tracing';
 
 // ============================================================
 // TYPES
@@ -73,6 +74,10 @@ export default function SignPractice({
 
   // Timing
   const startTimeRef = useRef<number | null>(null);
+  const practiceIdRef = useRef<string | null>(null);
+
+  // Track transcription in ref to avoid side effects in state updater
+  const transcriptionRef = useRef<string>('');
 
   // Normalized letters (only a-z, lowercase) - used for BOTH display AND recognition
   const letters = useMemo(() => {
@@ -155,53 +160,68 @@ export default function SignPractice({
   // CAPTURE AND RECOGNIZE (defined before countdown effect)
   // ============================================================
 
-  const captureFrame = useCallback((): string | null => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
+  // Image capture settings
+  const TARGET_SIZE = 512; // Reduced from 768 for faster transmission
+  const JPEG_QUALITY = 0.7; // Reduced from 0.8 for smaller payload
 
-    if (!video || !canvas) {
-      console.error('[SignPractice] Video or canvas ref missing');
-      return null;
-    }
+  /**
+   * Capture a frame from the video as a Blob (binary).
+   * Using blob instead of base64 eliminates ~33% payload overhead.
+   */
+  const captureFrameAsBlob = useCallback((): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      console.error('[SignPractice] Could not get canvas context');
-      return null;
-    }
+      if (!video || !canvas) {
+        console.error('[SignPractice] Video or canvas ref missing');
+        resolve(null);
+        return;
+      }
 
-    // Use 768x768 for optimal quality
-    const targetSize = 768;
-    canvas.width = targetSize;
-    canvas.height = targetSize;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.error('[SignPractice] Could not get canvas context');
+        resolve(null);
+        return;
+      }
 
-    // Center crop to square
-    const videoAspect = video.videoWidth / video.videoHeight;
-    let srcX = 0,
-      srcY = 0,
-      srcW = video.videoWidth,
-      srcH = video.videoHeight;
+      canvas.width = TARGET_SIZE;
+      canvas.height = TARGET_SIZE;
 
-    if (videoAspect > 1) {
-      srcW = video.videoHeight;
-      srcX = (video.videoWidth - srcW) / 2;
-    } else {
-      srcH = video.videoWidth;
-      srcY = (video.videoHeight - srcH) / 2;
-    }
+      // Center crop to square
+      const videoAspect = video.videoWidth / video.videoHeight;
+      let srcX = 0,
+        srcY = 0,
+        srcW = video.videoWidth,
+        srcH = video.videoHeight;
 
-    ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, targetSize, targetSize);
+      if (videoAspect > 1) {
+        srcW = video.videoHeight;
+        srcX = (video.videoWidth - srcW) / 2;
+      } else {
+        srcH = video.videoWidth;
+        srcY = (video.videoHeight - srcH) / 2;
+      }
 
-    // Get base64 without the data URL prefix
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-    const base64 = dataUrl.split(',')[1];
+      ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, TARGET_SIZE, TARGET_SIZE);
 
-    console.log('[SignPractice] 📷 Captured frame:', {
-      size: `${targetSize}x${targetSize}`,
-      base64Length: base64.length,
+      // Use toBlob for binary output (no base64 overhead)
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            console.log('[SignPractice] 📷 Captured frame as blob:', {
+              size: `${TARGET_SIZE}x${TARGET_SIZE}`,
+              quality: JPEG_QUALITY,
+              blobSize: blob.size,
+            });
+          }
+          resolve(blob);
+        },
+        'image/jpeg',
+        JPEG_QUALITY
+      );
     });
-
-    return base64;
   }, []);
 
   // ============================================================
@@ -222,11 +242,10 @@ export default function SignPractice({
       setLastResult(null); // Clear result overlay
 
       // Call onComplete after a brief delay to show completion state
+      // NOTE: Read from ref to avoid calling onComplete inside state updater
+      // (React Strict Mode calls updater functions twice, which caused duplicate API calls)
       setTimeout(() => {
-        setTranscription((prev) => {
-          onComplete(prev, durationMs, letters.length);
-          return prev;
-        });
+        onComplete(transcriptionRef.current, durationMs, letters.length);
       }, 500);
     } else {
       // Move to next letter
@@ -238,12 +257,24 @@ export default function SignPractice({
   }, [currentLetterIndex, letters, onComplete]);
 
   const startPractice = useCallback(async () => {
-    console.log('[SignPractice] 🎬 Starting practice for word:', expectedWord);
+    // Generate practice ID for correlating all recognize calls in this session
+    practiceIdRef.current = generatePracticeId();
+    console.log('[SignPractice] 🎬 Starting practice for word:', expectedWord, {
+      practiceId: practiceIdRef.current,
+    });
+
+    // Pre-warm the connection to eliminate cold start on first letter
+    // Fire-and-forget - don't await, don't block practice start
+    fetch('/api/game/ping', { method: 'HEAD' }).catch(() => {
+      // Ignore errors - pre-warming is best-effort
+    });
+
     // Ensure music is playing when practice starts
     await startBackgroundMusic();
     setIsStarted(true);
     setCurrentLetterIndex(0);
     setTranscription('');
+    transcriptionRef.current = '';
     setTotalCost(0);
     startTimeRef.current = Date.now();
     setCountdown(COUNTDOWN_SECONDS);
@@ -257,44 +288,77 @@ export default function SignPractice({
       return;
     }
 
-    console.log('[SignPractice] 🎯 Capturing frame for letter:', currentLetter);
+    const letterIndex = currentLetterIndex;
+    console.log('[SignPractice] 🎯 Capturing frame for letter:', currentLetter, {
+      practiceId: practiceIdRef.current,
+      letterIndex,
+    });
 
     setIsProcessing(true);
     setLastResult(null);
 
-    const imageBase64 = captureFrame();
+    // Time the capture (now async since toBlob is callback-based)
+    const captureTimer = createTimer('capture');
+    const imageBlob = await captureFrameAsBlob();
+    const captureTiming = captureTimer.end();
 
-    if (!imageBase64) {
+    if (!imageBlob) {
       console.error('[SignPractice] Failed to capture frame');
       setLastResult('?');
-      setTranscription((prev) => prev + '?');
+      transcriptionRef.current += '?';
+      setTranscription(transcriptionRef.current);
       advanceToNextLetter();
       setIsProcessing(false);
       return;
     }
 
+    const payloadSize = imageBlob.size;
+
     try {
-      console.log('[SignPractice] 📤 Sending image to /api/game/recognize');
+      // Time the upload/recognition
+      const uploadTimer = createTimer('upload');
+      console.log('[SignPractice] 📤 Sending image to /api/game/recognize (binary)', {
+        payloadSize,
+        captureMs: captureTiming.durationMs,
+      });
+
+      // Use FormData for binary upload (no base64 overhead)
+      const formData = new FormData();
+      formData.append('image', imageBlob, 'frame.jpg');
 
       const response = await fetch('/api/game/recognize', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageBase64 }),
+        headers: {
+          'x-practice-id': practiceIdRef.current || '',
+        },
+        body: formData,
       });
+      const uploadTiming = uploadTimer.end();
 
       const data: RecognizeResponse = await response.json();
 
+      // Log with full timing breakdown
       console.log('[SignPractice] 📥 Recognition result:', {
+        practiceId: practiceIdRef.current,
+        letterIndex,
         success: data.success,
         letter: data.letter,
         cost: data.metrics?.cost,
-        latency: data.metrics?.latencyMs,
+        serverLatencyMs: data.metrics?.latencyMs,
+        clientTimings: {
+          captureMs: captureTiming.durationMs,
+          uploadMs: uploadTiming.durationMs,
+          totalMs: captureTiming.durationMs + uploadTiming.durationMs,
+        },
+        payloadSize,
+        uploadType: 'blob',
       });
 
       const recognizedLetter = data.letter || '?';
 
       setLastResult(recognizedLetter);
-      setTranscription((prev) => prev + recognizedLetter);
+      transcriptionRef.current += recognizedLetter;
+      setTranscription(transcriptionRef.current);
 
       // Play correct/wrong sound effect
       const isCorrect = recognizedLetter.toLowerCase() === currentLetter.toLowerCase();
@@ -308,14 +372,18 @@ export default function SignPractice({
       advanceToNextLetter();
       setIsProcessing(false);
     } catch (error) {
-      console.error('[SignPractice] ❌ Recognition error:', error);
+      console.error('[SignPractice] ❌ Recognition error:', error, {
+        practiceId: practiceIdRef.current,
+        letterIndex,
+      });
       setLastResult('?');
-      setTranscription((prev) => prev + '?');
+      transcriptionRef.current += '?';
+      setTranscription(transcriptionRef.current);
 
       advanceToNextLetter();
       setIsProcessing(false);
     }
-  }, [currentLetter, currentLetterIndex, letters.length, captureFrame, advanceToNextLetter]);
+  }, [currentLetter, currentLetterIndex, letters.length, captureFrameAsBlob, advanceToNextLetter]);
 
   // ============================================================
   // COUNTDOWN TIMER (defined after captureAndRecognize)

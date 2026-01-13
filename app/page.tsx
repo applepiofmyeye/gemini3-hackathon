@@ -20,7 +20,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[var(--hot-cream)] relative">
+    <main className="min-h-screen bg-(--hot-cream) relative">
       {/* Logo - Top Left */}
       <div className="absolute top-0 left-0 z-20">
         <Image
@@ -71,7 +71,7 @@ export default function Home() {
           width={1507}
           height={560}
           sizes="100vw"
-          className="w-[100%] h-auto"
+          className="w-full h-auto"
         />
       </div>
 
@@ -84,8 +84,7 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="mt-auto py-8 text-center">
-          <p className="text-gray-500 text-sm">Built for Google Gemini Hackathon 🇸🇬</p>
-          <p className="text-gray-400 text-xs mt-1">
+          <p className="text-white text-lg font-semibold">
             Promoting sign language accessibility in Singapore
           </p>
         </footer>

@@ -2,8 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AnnouncementGraph } from '@/lib/graph/announcement-graph';
 import type { AnnouncementOutput } from '@/lib/schemas/agent-outputs';
-
-const LOG_PREFIX = '[API/ANNOUNCE]';
+import { createTracer, getOrCreateRequestId, createTracingHeaders } from '@/lib/utils/tracing';
 
 // ============================================================
 // REQUEST SCHEMA
@@ -21,6 +20,7 @@ const AnnounceRequestSchema = z.object({
 
 interface AnnounceResponse {
   success: boolean;
+  requestId?: string;
   scenario?: AnnouncementOutput['scenario'];
   message?: string;
   phonetic?: string;
@@ -35,54 +35,76 @@ interface AnnounceResponse {
 // ============================================================
 
 export async function POST(request: NextRequest): Promise<NextResponse<AnnounceResponse>> {
-  console.log(`${LOG_PREFIX} POST /api/game/announce`);
+  const requestId = getOrCreateRequestId(request.headers);
+  const tracer = createTracer({ requestId });
+
+  tracer.log('request_start', { method: 'POST', path: '/api/game/announce' });
 
   try {
+    // Parse request body
+    const parseTimer = tracer.startStage('parse_request');
     const body = await request.json();
+    tracer.recordTiming(parseTimer.end());
 
     // Validate request
     const parsed = AnnounceRequestSchema.safeParse(body);
     if (!parsed.success) {
-      console.error(`${LOG_PREFIX} Validation error:`, parsed.error.issues);
+      tracer.log('validation_error', { issues: parsed.error.issues });
       return NextResponse.json(
         {
           success: false,
+          requestId,
           error: parsed.error.issues.map((i) => i.message).join(', '),
         },
-        { status: 400 }
+        { status: 400, headers: createTracingHeaders(requestId) }
       );
     }
 
     const { target, transcription, matchPercentage } = parsed.data;
 
-    // Run announcement graph
-    const graph = new AnnouncementGraph();
-    const result = await graph.run(
-      { target, transcription, matchPercentage },
-      process.env.NODE_ENV === 'development' ? './output' : undefined
-    );
+    tracer.log('request_parsed', { target, transcription, matchPercentage });
 
-    console.log(
-      `${LOG_PREFIX} Complete: scenario=${result.scenario}, cost=$${result.metrics.totalCost.toFixed(6)}`
-    );
-
-    return NextResponse.json({
-      success: true,
-      scenario: result.scenario,
-      message: result.message,
-      phonetic: result.phonetic,
-      audioBase64: result.audioBase64,
-      audioMimeType: result.audioMimeType,
-      metrics: result.metrics,
+    // Run announcement graph with timing
+    const result = await tracer.measure('announcement_graph', async () => {
+      const graph = new AnnouncementGraph();
+      return graph.run(
+        { target, transcription, matchPercentage },
+        process.env.NODE_ENV === 'development' ? './output' : undefined
+      );
     });
+
+    const summary = tracer.getSummary();
+    tracer.log('request_complete', {
+      scenario: result.scenario,
+      totalCost: result.metrics.totalCost,
+      totalMs: summary.total,
+      stages: summary.stages,
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        requestId,
+        scenario: result.scenario,
+        message: result.message,
+        phonetic: result.phonetic,
+        audioBase64: result.audioBase64,
+        audioMimeType: result.audioMimeType,
+        metrics: result.metrics,
+      },
+      { headers: createTracingHeaders(requestId, summary.stages) }
+    );
   } catch (error) {
-    console.error(`${LOG_PREFIX} Error:`, error);
+    tracer.log('request_error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
       {
         success: false,
+        requestId,
         error: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 }
+      { status: 500, headers: createTracingHeaders(requestId) }
     );
   }
 }
