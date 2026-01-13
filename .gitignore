@@ -33,6 +33,9 @@ yarn-error.log*
 # logs
 *.log
 
+# debug output directory (agent logs, etc.)
+/output/
+
 # env files (can opt-in for committing if needed)
 .env*
 
