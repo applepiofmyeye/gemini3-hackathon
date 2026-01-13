@@ -224,11 +224,11 @@ export default function PlatformArrivalScreen({
         <ArrivalStatus scenario={scenario} className="mb-6" />
 
         {/* Score and Word Comparison Row */}
-        <div className="flex flex-col md:flex-row gap-6 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
           {/* Score Badge */}
           {score !== null && (
-            <div className="flex justify-center md:justify-start">
-              <ScoreBadge score={score} lineColor={lineColor} size="lg" />
+            <div className="flex justify-center md:justify-start shrink-0">
+              <ScoreBadge score={score} size="md" />
             </div>
           )}
 
