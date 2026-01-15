@@ -40,12 +40,22 @@ export type ScoringOutput = z.infer<typeof ScoringOutputSchema>;
 // ============================================================
 
 export const FeedbackOutputSchema = z.object({
-  feedback: z.string(),
-  suggestions: z.array(z.string()),
+  feedbackText: z.string(),
+  technicalTips: z.array(z.string()),
   encouragement: z.string(),
   nextChallenge: z.string().optional(),
 });
 export type FeedbackOutput = z.infer<typeof FeedbackOutputSchema>;
+
+// ============================================================
+// VALIDATION + FEEDBACK OUTPUT
+// ============================================================
+
+export const ValidationFeedbackOutputSchema = z.object({
+  validation: ValidationOutputSchema,
+  feedback: FeedbackOutputSchema,
+});
+export type ValidationFeedbackOutput = z.infer<typeof ValidationFeedbackOutputSchema>;
 
 // ============================================================
 // PHONETIC AGENT OUTPUT
